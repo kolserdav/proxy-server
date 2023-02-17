@@ -1,32 +1,22 @@
 use std::io;
-use std::io::Write;
+use std::io::{Result, Write};
 use std::net::{TcpListener, TcpStream};
 use std::thread::spawn;
-fn echo_main(addr: &str) -> io::Result<()> {
-    let listener = TcpListener::bind(addr)?;
-    println!("listening on {}", addr);
-    loop {
-        let (mut stream, peer) = listener.accept()?;
-        println!("{:?}", stream);
-        let mut write_stream = stream.try_clone()?;
-        /*
-                let buf = format!(
-                    "200 OK\r\n
-                    GET {0} HTTP/1.1\r\n\
-                 Host: {0}\r\n\
-                 \r\n",
-                    &addr
-                )
-                .into_bytes();
 
-                write_stream.write(&buf);
-        */
-        let mut f = std::fs::File::open("./src/main.rs").expect("err 78");
-        spawn(move || {
-            io::copy(&mut f, &mut write_stream).expect("err: 88 ");
-        });
+fn echo_main(addr: &str) -> Result<()> {
+    let listener = TcpListener::bind(addr)?;
+    for mut stream in listener.incoming() {
+        handle_client(&mut stream?);
     }
+    println!("listening on {}", addr);
+    Ok(())
 }
+
+fn handle_client(client: &mut TcpStream) {
+    println!("{:?}", client);
+    client.write("HTTP/1.1 200 OK\r\nContent-Length: 6\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nServer: tes\r\n\r\necho\r\n".as_bytes());
+}
+
 fn main() {
     echo_main("127.0.0.1:3000").expect("error: ");
 }
