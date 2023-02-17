@@ -1,7 +1,9 @@
-use std::io;
-use std::io::{Result, Write};
-use std::net::{TcpListener, TcpStream};
-use std::thread::spawn;
+use std::{
+    io::{Result, Write},
+    net::{TcpListener, TcpStream},
+    sync::mpsc::channel,
+    thread::spawn,
+};
 
 fn echo_main(addr: &str) -> Result<()> {
     let listener = TcpListener::bind(addr)?;
@@ -12,9 +14,21 @@ fn echo_main(addr: &str) -> Result<()> {
     Ok(())
 }
 
-fn handle_client(client: &mut TcpStream) {
+const ECHO: [char; 5] = ['e', 'c', 'h', 'o', '\n'];
+
+fn handle_client(client: &mut TcpStream) -> Result<()> {
     println!("{:?}", client);
-    client.write("HTTP/1.1 200 OK\r\nContent-Length: 6\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nServer: tes\r\n\r\necho\r\n".as_bytes());
+    client.write("HTTP/1.1 200 OK\r\nContent-Length: 5\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nServer: echo-rs\r\n\r\n".as_bytes())?;
+    let (tx, rx) = channel();
+    spawn(move || {
+        for i in 0..ECHO.len() {
+            tx.send(ECHO[i]).unwrap();
+        }
+    });
+    for r in rx {
+        client.write(r.to_string().as_bytes())?;
+    }
+    Ok(())
 }
 
 fn main() {
