@@ -1,22 +1,22 @@
 use std::{
-    io::{Result, Write},
+    io::{Read, Result, Write},
     net::{TcpListener, TcpStream},
+    str,
     sync::mpsc::channel,
     thread::spawn,
 };
 
-fn echo_main(addr: &str) -> Result<()> {
+fn target(addr: &str) -> Result<()> {
     let listener = TcpListener::bind(addr)?;
-    for mut stream in listener.incoming() {
-        handle_client(&mut stream?);
+    for stream in listener.incoming() {
+        handle_target(&mut stream?)?;
     }
-    println!("listening on {}", addr);
+    println!("listening target on {}", addr);
     Ok(())
 }
 
-const ECHO: [char; 5] = ['e', 'c', 'h', 'o', '\n'];
-
-fn handle_client(client: &mut TcpStream) -> Result<()> {
+fn handle_target(client: &mut TcpStream) -> Result<()> {
+    const ECHO: [char; 5] = ['e', 'c', 'h', 'o', '\n'];
     println!("{:?}", client);
     client.write("HTTP/1.1 200 OK\r\nContent-Length: 5\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nServer: echo-rs\r\n\r\n".as_bytes())?;
     let (tx, rx) = channel();
@@ -31,6 +31,42 @@ fn handle_client(client: &mut TcpStream) -> Result<()> {
     Ok(())
 }
 
+fn handle_proxy(client: &mut TcpStream) -> Result<()> {
+    let mut stream = TcpStream::connect("127.0.0.1:3001")?;
+    stream.write("GET / HTTP.1.1\r\nHost: 127.0.0.1:3001\r\n\r\n".as_bytes())?; /*
+                                                                                while let Some(v) = stream.read_line() {
+                                                                                    println!("{}", v);
+                                                                                }
+                                                                                                                                                           */
+    client.write("HTTP/1.1 200 OK\r\nContent-Length: 50\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nServer: echo-rs\r\n\r\n".as_bytes())?;
+    let (tx, rx) = channel();
+    spawn(move || loop {
+        let mut b = [0; 1];
+        let len = stream.read(&mut b).unwrap();
+        if len == 0 {
+            break;
+        }
+        tx.send(b).unwrap();
+    });
+    for r in rx {
+        println!("{:?}:{:?}", &str::from_utf8(&r), &r);
+        client.write(&r).unwrap();
+    }
+    Ok(())
+}
+
+fn proxy(addr: &str) -> Result<()> {
+    let listener = TcpListener::bind(addr)?;
+    for stream in listener.incoming() {
+        handle_proxy(&mut stream?)?;
+    }
+    println!("listening proxy on {}", addr);
+    Ok(())
+}
+
 fn main() {
-    echo_main("127.0.0.1:3000").expect("error: ");
+    spawn(move || {
+        target("127.0.0.1:3001").expect("error target");
+    });
+    proxy("127.0.0.1:3000").expect("error proxy");
 }
