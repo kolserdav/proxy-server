@@ -1,6 +1,6 @@
 use std::{
     io::{Read, Result, Write},
-    net::{TcpListener, TcpStream},
+    net::{Shutdown, TcpListener, TcpStream},
     str,
     sync::mpsc::channel,
     thread::spawn,
@@ -33,12 +33,28 @@ fn handle_target(client: &mut TcpStream) -> Result<()> {
 
 fn handle_proxy(client: &mut TcpStream) -> Result<()> {
     let mut stream = TcpStream::connect("127.0.0.1:3001")?;
-    stream.write("GET / HTTP.1.1\r\nHost: 127.0.0.1:3001\r\n\r\n".as_bytes())?; /*
-                                                                                while let Some(v) = stream.read_line() {
-                                                                                    println!("{}", v);
-                                                                                }
-                                                                                                                                                           */
-    client.write("HTTP/1.1 200 OK\r\nContent-Length: 50\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nServer: echo-rs\r\n\r\n".as_bytes())?;
+    stream.write("GET / HTTP.1.1\r\nHost: 127.0.0.1:3001\r\n\r\n".as_bytes())?;
+    let mut h = vec![];
+    loop {
+        let mut b = [0; 1];
+        let len = stream.read(&mut b)?;
+        if len == 0 {
+            break;
+        }
+        let b = b[0];
+        let len = h.len();
+        if len > 2 && b == 10 && (h[len - 1] == 10 || (h[len - 1] == 13 && h[len - 2] == 10)) {
+            h.push(b);
+            break;
+        }
+        h.push(b);
+    }
+    println!(
+        "{:?} (read_timeout: {:?})",
+        &str::from_utf8(&h),
+        stream.read_timeout()
+    );
+    client.write(&h)?;
     let (tx, rx) = channel();
     spawn(move || loop {
         let mut b = [0; 1];
@@ -50,7 +66,7 @@ fn handle_proxy(client: &mut TcpStream) -> Result<()> {
     });
     for r in rx {
         println!("{:?}:{:?}", &str::from_utf8(&r), &r);
-        client.write(&r).unwrap();
+        client.write(&r)?;
     }
     Ok(())
 }
