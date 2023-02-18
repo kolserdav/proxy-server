@@ -41,9 +41,7 @@ fn proxy(addr: &str) -> Result<()> {
 }
 
 fn main() {
-    spawn(move || {
-        target("127.0.0.1:3001").expect("error target");
-    });
+    target("127.0.0.1:3001").expect("error target");
     proxy("127.0.0.1:3000").expect("error proxy");
 }
 
@@ -51,6 +49,7 @@ fn target(addr: &str) -> Result<()> {
     let listener = TcpListener::bind(addr)?;
     println!("listening target on {}", addr);
     for stream in listener.incoming() {
+        println!("start");
         handle_target(&mut stream?)?;
     }
     Ok(())
@@ -60,15 +59,17 @@ fn handle_target(client: &mut TcpStream) -> Result<()> {
     const ECHO: [char; 5] = ['e', 'c', 'h', 'o', '\n'];
     println!("{:?}", client);
     let (tx, rx) = channel();
-    tx.send("HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nTransfer-Encoding: chunked\r\nServer: echo-rs\r\n\r\n".as_bytes()).unwrap();
     spawn(move || {
+        tx.send("HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nTransfer-Encoding: chunked\r\nServer: echo-rs\r\n\r\n".as_bytes()).unwrap();
         for i in 0..4 {
-            tx.send("e".as_bytes()).unwrap();
+            tx.send("1\r\ne\r\n".as_bytes()).unwrap();
         }
-        tx.send("\r\n\r\n".as_bytes()).unwrap();
+        tx.send("0\r\n\r\n".as_bytes()).unwrap();
     });
     for r in rx {
+        println!("{:?}", &r);
         client.write(r)?;
     }
+    println!("end");
     Ok(())
 }
