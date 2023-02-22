@@ -1,6 +1,5 @@
 use std::{
     io::{Read, Result, Write},
-    iter::FromIterator,
     net::{TcpListener, TcpStream},
     str,
     sync::mpsc::{channel, Receiver, Sender},
@@ -8,16 +7,20 @@ use std::{
 };
 mod headers;
 use headers::Headers;
+mod log;
+use log::{Log, LogLevel};
 
 const CHUNK_SIZE: usize = 1024;
+static LOG_LEVEL: LogLevel = LogLevel::Info;
 
 fn handle_proxy(client: &mut TcpStream) -> Result<()> {
+    let log = Log::new(&LOG_LEVEL);
     let mut stream = TcpStream::connect("127.0.0.1:3001")?;
     stream.write("GET / HTTP.1.1\r\nHost: 127.0.0.1:3001\r\n\r\n".as_bytes())?;
     let mut heads = Headers::new(&mut stream);
     let mut h = vec![];
     heads.read_to_end(&mut h)?;
-    println!("handle proxy {:?}", &client);
+    log.println(LogLevel::Info, "handle proxy", &client);
     let (tx, rx) = channel();
     tx.send(h).unwrap();
     spawn(move || loop {
@@ -41,7 +44,11 @@ fn handle_proxy(client: &mut TcpStream) -> Result<()> {
         tx.send(buf).unwrap();
     });
     for r in rx {
-        println!("send to client: {:?}", str::from_utf8(&r).unwrap());
+        log.println(
+            LogLevel::Info,
+            "send to client",
+            str::from_utf8(&r).unwrap(),
+        );
         client.write(&r)?;
     }
     Ok(())
@@ -49,6 +56,7 @@ fn handle_proxy(client: &mut TcpStream) -> Result<()> {
 
 fn proxy(addr: &str) -> Result<()> {
     let listener = TcpListener::bind(addr)?;
+    let log = Log::new(&LOG_LEVEL);
     println!("listening proxy on {}", addr);
     for stream in listener.incoming() {
         handle_proxy(&mut stream?)?;
@@ -74,8 +82,9 @@ fn target(addr: &str) -> Result<()> {
 }
 
 fn handle_target(client: &mut TcpStream) -> Result<()> {
+    let log = Log::new(&LOG_LEVEL);
     const ECHO: [char; 5] = ['e', 'c', 'h', 'o', '\n'];
-    println!("handle target {:?}", client);
+    log.println(LogLevel::Info, "handle target", &client);
     let (tx, rx) = channel();
     spawn(move || {
         tx.send("HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nAccept-Ranges: bytes\r\nTransfer-Encoding: chunked\r\nServer: echo-rs\r\n\r\n".as_bytes()).unwrap();
@@ -85,9 +94,12 @@ fn handle_target(client: &mut TcpStream) -> Result<()> {
         tx.send("0\r\n\r\n".as_bytes()).unwrap();
     });
     for r in rx {
-        println!("send from target: {:?}", str::from_utf8(&r).unwrap());
+        log.println(
+            LogLevel::Info,
+            "send from target",
+            str::from_utf8(&r).unwrap(),
+        );
         client.write(r)?;
     }
-    // println!("end");
     Ok(())
 }
