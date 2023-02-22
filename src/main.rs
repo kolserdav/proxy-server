@@ -17,7 +17,7 @@ fn handle_proxy(client: &mut TcpStream) -> Result<()> {
     let mut heads = Headers::new(&mut stream);
     let mut h = vec![];
     heads.read_to_end(&mut h)?;
-    println!("{:?}", h);
+    println!("handle proxy {:?}", &client);
     let (tx, rx) = channel();
     tx.send(h).unwrap();
     spawn(move || loop {
@@ -26,28 +26,22 @@ fn handle_proxy(client: &mut TcpStream) -> Result<()> {
         if len == 0 {
             break;
         }
-        let r = '\r' as u8;
-        let n = '\n' as u8;
-        let mut buf = vec![len as u8, r, n];
+        let mut buf = vec![];
         #[allow(unused_must_use)]
-        b.into_iter().take_while(|_b| {
-            if *_b != 0 {
-                buf.push(*_b);
-                buf.push(r);
-                buf.push(n);
+        b.map(|_b| {
+            if _b != 0 {
+                buf.push(_b);
                 return true;
             }
             false
         });
-        buf.push(0);
-        buf.push(r);
-        buf.push(n);
-        buf.push(r);
-        buf.push(n);
+        if buf.len() == 0 {
+            break;
+        }
         tx.send(buf).unwrap();
     });
     for r in rx {
-        println!("{:?}", &r);
+        println!("send to client: {:?}", str::from_utf8(&r).unwrap());
         client.write(&r)?;
     }
     Ok(())
@@ -91,7 +85,7 @@ fn handle_target(client: &mut TcpStream) -> Result<()> {
         tx.send("0\r\n\r\n".as_bytes()).unwrap();
     });
     for r in rx {
-        println!("{:?}", &r);
+        println!("send from target: {:?}", str::from_utf8(&r).unwrap());
         client.write(r)?;
     }
     // println!("end");
