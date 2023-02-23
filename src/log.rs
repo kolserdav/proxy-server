@@ -15,6 +15,7 @@ impl LogLevel {
     }
 }
 
+#[derive(Clone)]
 pub struct Log<'a> {
     level: &'a LogLevel,
 }
