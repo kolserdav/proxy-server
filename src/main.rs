@@ -89,11 +89,12 @@ fn handle_target(client: &mut TcpStream) -> Result<()> {
     _log.println(LogLevel::Info, "handle target", &client);
     let (tx, rx) = channel();
     spawn(move || {
-        let http = Http::new();
+        let mut http = Http::new();
         tx.send("HTTP/1.1 200 OK\r\nContent-Type: plain/text\r\nTransfer-Encoding: chunked\r\nServer: echo-rs\r\n\r\n".as_bytes()).unwrap();
         let mut s = "".to_string();
         for i in 0..8 {
-            tx.send(&http.chunk("e")).unwrap();
+            let chunk = http.chunk("e");
+            tx.send("".to_string().as_bytes()).unwrap();
         }
         tx.send("0\r\n\r\n".as_bytes()).unwrap();
     });

@@ -3,12 +3,12 @@ pub struct Http {
     n: char,
 }
 
-impl<'a> Http {
+impl Http {
     pub fn new() -> Http {
         Http { r: '\r', n: '\n' }
     }
-    pub fn chunk(&self, data: &str) -> Vec<u8> {
-        let b = format!(
+    fn serialize(&self, data: &str) -> String {
+        format!(
             "{}{}{}{}{}{}",
             data.len(),
             self.r,
@@ -17,7 +17,9 @@ impl<'a> Http {
             self.r,
             self.n
         )
-        .as_bytes();
-        Vec::from(b)
+    }
+    pub fn chunk(&self, data: &str) -> &'static [u8] {
+        let v = self.serialize(data);
+        v.as_bytes()
     }
 }
