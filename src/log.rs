@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub enum LogLevel {
     Info,
     Warn,
@@ -31,7 +32,7 @@ impl<'a> Log<'a> {
         K: std::fmt::Display,
     {
         if self.level.as_num() <= level.as_num() {
-            println!("{}: {:?}", msg, arg);
+            println!("[ {:?} ] {}: {:?}", level, msg, arg);
         }
     }
 }

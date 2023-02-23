@@ -18,8 +18,7 @@ impl Http {
             self.n
         )
     }
-    pub fn chunk(&self, data: &str) -> &'static [u8] {
-        let v = self.serialize(data);
-        v.as_bytes()
+    pub fn chunk(&self, data: &str) -> String {
+        self.serialize(data)
     }
 }
