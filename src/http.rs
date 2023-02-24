@@ -3,14 +3,18 @@ use std::{
     net::TcpStream,
 };
 
+#[derive(Debug)]
 pub struct Http {
-    socket: TcpStream,
+    pub socket: TcpStream,
 }
 
 impl Http {
     pub fn connect(address: &str) -> Result<Http> {
         let socket = TcpStream::connect(address)?;
         Ok(Http { socket })
+    }
+    pub fn from(socket: TcpStream) -> Http {
+        Http { socket }
     }
 }
 
