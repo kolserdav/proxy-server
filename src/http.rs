@@ -9,7 +9,7 @@ pub struct Http {
 
 impl Http {
     pub fn connect(address: &str) -> Result<Http> {
-        let mut socket = TcpStream::connect(address)?;
+        let socket = TcpStream::connect(address)?;
         Ok(Http { socket })
     }
 }
