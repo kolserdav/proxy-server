@@ -2,6 +2,8 @@ use std::{
     io::{ErrorKind, Read, Result, Write},
     net::{TcpListener, TcpStream},
     str,
+    thread::sleep,
+    time::Duration,
 };
 mod thread_pool;
 use thread_pool::ThreadPool;
@@ -24,8 +26,16 @@ fn handle_proxy(client: &mut TcpStream) -> Result<()> {
     let _log = Log::new(&LOG_LEVEL);
 
     _log.println(LogLevel::Info, "handle proxy", &client);
-    let mut http = Http::connect(TARGET_ADDRESS)?;
-    http.write("GET / HTTP.1.1\r\nHost: 127.0.0.1:3001\r\n\r\n".as_bytes())?;
+    let http = Http::connect(TARGET_ADDRESS);
+    if let Err(e) = &http {
+        _log.println(LogLevel::Warn, "Failed proxy", e);
+        client.write("HTTP/1.1 400 ERROR\r\nContent-Length: 5\r\n\r\nError".as_bytes())?;
+        client.flush()?;
+        sleep(Duration::from_millis(100));
+        return Ok(());
+    }
+    let mut http = http?;
+    http.write("GET / HTTP/1.1\r\nHost: 127.0.0.1:3001\r\n\r\n".as_bytes())?;
     let mut h = vec![];
     http.read_to_end(&mut h)?;
 
