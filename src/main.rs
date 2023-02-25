@@ -8,10 +8,11 @@ use std::{
 mod thread_pool;
 use thread_pool::ThreadPool;
 mod http;
-use http::Http;
+use http::{Http, Status};
 mod log;
 use log::{Log, LogLevel};
-use regex::Regex;
+mod prelude;
+use prelude::*;
 
 #[cfg(test)]
 mod tests;
@@ -23,21 +24,9 @@ pub static THREADS: usize = 4;
 pub static LOG_LEVEL: LogLevel = LogLevel::Info;
 pub static PROXY_ADDRESS: &str = "127.0.0.1:3000";
 
-fn change_header_host(heads: &[u8]) -> Option<String> {
-    let str_h = str::from_utf8(&heads).expect("Failed parse incoming headers");
-    let reg = Regex::new(r"Host: *.*\r\n").expect("Wrong regex");
-    let capts = reg.captures(str_h);
-    if let None = capts {
-        return None;
-    }
-    let capts = capts.unwrap();
-    let old_host = capts.get(0).unwrap().as_str();
-    let heads_str = str::from_utf8(heads).expect("Failed stringify heads");
-    Some(heads_str.replace(old_host, format!("Host: {}\r\n", TARGET_ADDRESS).as_str()))
-}
-
 fn handle_proxy(client: TcpStream) -> Result<()> {
     let _log = Log::new(&LOG_LEVEL);
+    _log.println(LogLevel::Info, "handle proxy", &client);
 
     let mut client = Http::from(client);
     let mut heads = vec![];
@@ -45,16 +34,17 @@ fn handle_proxy(client: TcpStream) -> Result<()> {
     let heads_n = change_header_host(&heads);
     if let None = heads_n {
         _log.println(LogLevel::Warn, "Header host is missing", &heads);
-        client.write("HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n".as_bytes())?;
+        client.set_status(Status::BadRequest);
+        client.write("Content-Length: 0\r\n\r\n".as_bytes())?;
         return Ok(());
     }
     let heads_n = heads_n.unwrap();
 
-    _log.println(LogLevel::Info, "handle proxy", &client);
     let http = Http::connect(TARGET_ADDRESS);
     if let Err(e) = &http {
         _log.println(LogLevel::Warn, "Failed proxy", e);
-        client.write("HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\n\r\n".as_bytes())?;
+        client.set_status(Status::BadGateway)?;
+        client.write("Content-Length: 0\r\n\r\n".as_bytes())?;
         client.flush()?;
         sleep(Duration::from_millis(100));
         return Ok(());

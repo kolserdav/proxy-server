@@ -1,20 +1,58 @@
+use super::prelude::*;
 use std::{
+    fmt,
+    fmt::{Display, Formatter},
     io::{Read, Result, Write},
     net::TcpStream,
+    str,
 };
+
+pub const CRLF: &str = "\r\n";
+static VERSION: &str = "HTTP/1.1";
+
+#[derive(Debug)]
+pub enum Status {
+    OK,
+    BadRequest,
+    BadGateway,
+}
+
+impl Status {
+    fn code(&self) -> u16 {
+        use Status::*;
+        match self {
+            OK => 200,
+            BadRequest => 400,
+            BadGateway => 502,
+        }
+    }
+}
+
+impl Display for Status {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let self_str = format!("{:?}", self);
+        let res = space_bef_cap(self_str);
+        write!(f, "{}", res)
+    }
+}
 
 #[derive(Debug)]
 pub struct Http {
-    pub socket: TcpStream,
+    socket: TcpStream,
 }
 
 impl Http {
     pub fn connect(address: &str) -> Result<Http> {
         let socket = TcpStream::connect(address)?;
-        Ok(Http { socket })
+        Ok(Http::from(socket))
     }
+
     pub fn from(socket: TcpStream) -> Http {
         Http { socket }
+    }
+
+    pub fn set_status(&mut self, status: Status) -> Result<usize> {
+        self.write(format!("{} {}{}{}", VERSION, status.code(), status, CRLF).as_bytes())
     }
 }
 
