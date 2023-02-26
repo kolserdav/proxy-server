@@ -24,7 +24,7 @@ pub const THREADS: usize = 4;
 pub const LOG_LEVEL: LogLevel = LogLevel::Info;
 pub const PROXY_ADDRESS: &str = "127.0.0.1:3000";
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Builder {
     pub address: &'static str,
     pub target: &'static str,
@@ -34,8 +34,8 @@ pub struct Builder {
 }
 
 impl Builder {
-    pub fn new() -> Builder {
-        Builder {
+    pub fn new() -> Self {
+        Self {
             address: PROXY_ADDRESS,
             target: TARGET_ADDRESS,
             log_level: LOG_LEVEL,
@@ -69,8 +69,35 @@ impl Builder {
         self
     }
 
-    fn handle_proxy(&self, client: TcpStream) -> Result<()> {
+    pub fn bind(self) -> Result<()> {
+        let listener = TcpListener::bind(&self.address)?;
+
         let _log = Log::new(&self.log_level);
+        println!("Listening proxy on {}", self.address);
+
+        let pool = ThreadPool::new(self.threads);
+        for stream in listener.incoming() {
+            let cl = Handler::new(self);
+            pool.execute(|| {
+                cl.handle_proxy(stream.expect("Error in incoming stream"))
+                    .expect("Failed handle proxy");
+            });
+        }
+        Ok(())
+    }
+}
+
+struct Handler {
+    config: Builder,
+}
+
+impl Handler {
+    fn new(config: Builder) -> Self {
+        Self { config }
+    }
+
+    fn handle_proxy(self, client: TcpStream) -> Result<()> {
+        let _log = Log::new(&self.config.log_level);
         _log.println(LogLevel::Info, "handle proxy", &client);
 
         let mut client = Http::from(client);
@@ -85,7 +112,7 @@ impl Builder {
         }
         let heads_n = heads_n.unwrap();
 
-        let http = Http::connect(&self.target);
+        let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
             _log.println(LogLevel::Warn, "Failed proxy", e);
             client.set_status(Status::BadGateway)?;
@@ -130,23 +157,6 @@ impl Builder {
                 break;
             }
             client.write(&buf).expect("Failed write chunk");
-        }
-        Ok(())
-    }
-
-    pub fn bind(&'static self) -> Result<()> {
-        let listener = TcpListener::bind(&self.address)?;
-
-        let _log = Log::new(&self.log_level);
-        println!("Listening proxy on {}", self.address);
-
-        let pool = ThreadPool::new(self.threads);
-
-        for stream in listener.incoming() {
-            pool.execute(|| {
-                self.handle_proxy(stream.expect("Error in incoming stream"))
-                    .expect("Failed handle proxy");
-            });
         }
         Ok(())
     }
