@@ -1,7 +1,10 @@
 #[cfg(test)]
-use super::http::{Http, Status, CRLF};
-use super::log::{Log, LogLevel};
-use super::prelude::*;
+use super::{
+    http::{Http, Status, CRLF},
+    log::{Log, LogLevel},
+    prelude::*,
+    Builder,
+};
 use std::{
     io::{Read, Result, Write},
     net::{TcpListener, TcpStream},
@@ -17,22 +20,17 @@ const ECHO: [char; 4] = ['e', 'c', 'h', 'o'];
 #[test]
 pub fn test_proxy_server() -> Result<()> {
     println!("Start test of proxy");
+    let server = Builder::new();
     spawn(move || {
-        target(super::TARGET_ADDRESS).expect("Error in target");
+        target(server.target).expect("Error in target");
     });
     spawn(move || {
-        super::bind(super::PROXY_ADDRESS).expect("Error in proxy");
+        server.bind().expect("Error in proxy");
     });
     sleep(Duration::from_secs(1));
-    let mut http = Http::connect(super::PROXY_ADDRESS)?;
+    let mut http = Http::connect(server.address)?;
     let mut buff: Vec<u8> = vec![];
-    http.write(
-        format!(
-            "GET / HTTP/1.1{CRLF}Host: {}{CRLF}{CRLF}",
-            super::TARGET_ADDRESS
-        )
-        .as_bytes(),
-    )?;
+    http.write(format!("GET / HTTP/1.1{CRLF}Host: {}{CRLF}{CRLF}", server.address).as_bytes())?;
     http.read_to_end(&mut buff)?;
     buff = vec![];
     http.read_to_end(&mut buff)?;

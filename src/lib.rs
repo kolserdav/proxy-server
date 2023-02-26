@@ -19,6 +19,10 @@ mod tests;
 
 pub const CHUNK_SIZE: usize = 1024;
 
+#[allow(inactive_code)]
+#[cfg(feature = "chunk-10KB")]
+pub const CHUNK_SIZE: usize = 10240;
+
 pub const TARGET_ADDRESS: &str = "127.0.0.1:3001";
 pub const THREADS: usize = 4;
 pub const LOG_LEVEL: LogLevel = LogLevel::Info;
