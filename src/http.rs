@@ -12,6 +12,7 @@ static VERSION: &str = "HTTP/1.1";
 
 #[derive(Debug)]
 pub enum Status {
+    #[allow(dead_code)]
     OK,
     BadRequest,
     BadGateway,

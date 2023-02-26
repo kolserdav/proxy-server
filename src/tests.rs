@@ -21,7 +21,7 @@ pub fn test_proxy_server() -> Result<()> {
         target(super::TARGET_ADDRESS).expect("Error in target");
     });
     spawn(move || {
-        super::proxy(super::PROXY_ADDRESS).expect("Error in proxy");
+        super::bind(super::PROXY_ADDRESS).expect("Error in proxy");
     });
     sleep(Duration::from_secs(1));
     let mut http = Http::connect(super::PROXY_ADDRESS)?;
@@ -73,8 +73,8 @@ fn handle_target(client: TcpStream) -> Result<()> {
         "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}{CRLF}"
     );
     _log.println(LogLevel::Info, "target write headers", &heads);
-    client.set_status(Status::OK);
-    client.write(heads.as_bytes()).unwrap();
+    client.set_status(Status::OK)?;
+    client.write(heads.as_bytes())?;
     for i in ECHO {
         let chunk = format!("1{CRLF}{}{CRLF}", i);
         client.write(chunk.as_bytes())?;
