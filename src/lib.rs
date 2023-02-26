@@ -2,13 +2,15 @@
 //! To implement request proxying, only standard [`TcpStream`] was used without additional libraries
 //! # Examples
 //! With default params:
-//! ```no-run
-//! use proxy_server::Builder;                                                                       //!      
+//! ```no_run
+//! use proxy_server::Builder;                                                                       
+//!      
 //! fn main() {
 //!     Builder::new().bind().expect("Error in proxy");
 //! }
+//! ```
 //! With custom params:
-//! ```no-run
+//! ```no_run
 //! use proxy_server::{log::LogLevel, Builder};
 //!
 //! fn main() {
