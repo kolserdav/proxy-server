@@ -1,3 +1,27 @@
+//! Low level proxy server
+//! To implement request proxying, only standard [`TcpStream`] was used without additional libraries
+//! # Examples
+//! With default params:
+//! ```no-run
+//! use proxy_server::Builder;                                                                       //!      
+//! fn main() {
+//!     Builder::new().bind().expect("Error in proxy");
+//! }
+//! With custom params:
+//! ```no-run
+//! use proxy_server::{log::LogLevel, Builder};
+//!
+//! fn main() {
+//!     Builder::new()
+//!         .with_address("127.0.0.1:3000")
+//!         .with_target("127.0.0.1:3001")
+//!         .with_log_level(LogLevel::Warn)
+//!         .with_threads(4)
+//!         .bind()
+//!         .expect("Error in proxy");
+//! }
+//! ```
+
 use std::{
     io::{ErrorKind, Read, Result, Write},
     net::{TcpListener, TcpStream},
@@ -9,7 +33,7 @@ mod thread_pool;
 use thread_pool::ThreadPool;
 mod http;
 use http::{Http, Status};
-mod log;
+pub mod log;
 use log::{Log, LogLevel};
 mod prelude;
 use prelude::*;
@@ -28,6 +52,7 @@ pub const THREADS: usize = 4;
 pub const LOG_LEVEL: LogLevel = LogLevel::Info;
 pub const PROXY_ADDRESS: &str = "127.0.0.1:3000";
 
+/// Structure for proxy server configuration
 #[derive(Debug, Clone, Copy)]
 pub struct Builder {
     pub address: &'static str,
@@ -38,6 +63,7 @@ pub struct Builder {
 }
 
 impl Builder {
+    /// Create new proxy server builder
     pub fn new() -> Self {
         Self {
             address: PROXY_ADDRESS,
@@ -48,31 +74,31 @@ impl Builder {
         }
     }
 
+    /// Set proxy server address
     pub fn with_address(mut self, address: &'static str) -> Self {
         self.address = address;
         self
     }
 
+    /// Set proxy server target address
     pub fn with_target(mut self, target: &'static str) -> Self {
         self.target = target;
         self
     }
 
+    /// Set log level of proxy server
     pub fn with_log_level(mut self, log_level: LogLevel) -> Self {
         self.log_level = log_level;
         self
     }
 
+    /// Set proxy server count of used threads
     pub fn with_threads(mut self, threads: usize) -> Self {
         self.threads = threads;
         self
     }
 
-    pub fn with_chunk_size(mut self, chunk_size: usize) -> Self {
-        self.chunk_size = chunk_size;
-        self
-    }
-
+    /// Proxy server listener releasing [`std::net::TcpListener`] via thread pool
     pub fn bind(self) -> Result<()> {
         let listener = TcpListener::bind(&self.address)?;
 

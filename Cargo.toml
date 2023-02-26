@@ -1,9 +1,9 @@
 [package]
 name = "proxy-server"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Low level proxy server"
-authors = ["Sergei Kol'miller <uyem.ru@gmail.com>"]
+authors = ["Sergey Kolmiller <uyem.ru@gmail.com>"]
 license = "MIT"
 readme = "README.md"
 keywords = ["http", "proxy", "tcp"]
