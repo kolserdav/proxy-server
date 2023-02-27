@@ -1,5 +1,7 @@
 use regex::Regex;
 use std::str;
+pub mod constants;
+use constants::*;
 
 pub fn change_header_host(heads: &[u8]) -> Option<String> {
     let str_h = str::from_utf8(&heads).expect(
@@ -17,10 +19,7 @@ led parse incoming headers",
         "
 Failed stringify heads",
     );
-    Some(heads_str.replace(
-        old_host,
-        format!("Host: {}\r\n", super::TARGET_ADDRESS).as_str(),
-    ))
+    Some(heads_str.replace(old_host, format!("Host: {}\r\n", TARGET_ADDRESS).as_str()))
 }
 
 pub fn space_bef_cap(src: String) -> String {

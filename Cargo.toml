@@ -15,5 +15,17 @@ rust-version = "1.67"
 [lib]
 name = "proxy_server"
 
+[features]
+default = ["chunk_10KB"]
+chunk_1KB = []
+chunk_5KB = []
+chunk_10KB = []
+chunk_50KB = []
+chunk_100KB = []
+chunk_500KB = []
+chunk_1MB = []
+chunk_5MB = []
+chunk_10MB = []
+
 [dependencies]
 regex = "1.7.1"

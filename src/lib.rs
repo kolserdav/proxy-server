@@ -1,4 +1,4 @@
-//! Low level proxy server
+//! Low level proxy server.
 //! To implement request proxying, only standard [`TcpStream`] was used without additional libraries
 //! # Examples
 //! With default params:
@@ -33,26 +33,16 @@ use std::{
 };
 mod thread_pool;
 use thread_pool::ThreadPool;
-mod http;
+pub mod http;
 use http::{Http, Status};
 pub mod log;
-use log::{Log, LogLevel};
+use log::{Log, LogLevel, LOG_LEVEL};
 mod prelude;
+use prelude::constants::*;
 use prelude::*;
 
 #[cfg(test)]
 mod tests;
-
-pub const CHUNK_SIZE: usize = 1024;
-
-#[allow(inactive_code)]
-#[cfg(feature = "chunk-10KB")]
-pub const CHUNK_SIZE: usize = 10240;
-
-pub const TARGET_ADDRESS: &str = "127.0.0.1:3001";
-pub const THREADS: usize = 4;
-pub const LOG_LEVEL: LogLevel = LogLevel::Info;
-pub const PROXY_ADDRESS: &str = "127.0.0.1:3000";
 
 /// Structure for proxy server configuration
 #[derive(Debug, Clone, Copy)]
@@ -105,7 +95,10 @@ impl Builder {
         let listener = TcpListener::bind(&self.address)?;
 
         let _log = Log::new(&self.log_level);
-        println!("Listening proxy on {}", self.address);
+        println!(
+            "Listening port: {}; Chunk size: {}KB; Log level: {:?}",
+            &self.address, CHUNK_SIZE, &self.log_level
+        );
 
         let pool = ThreadPool::new(self.threads);
         for stream in listener.incoming() {
@@ -143,6 +136,16 @@ impl Handler {
             return Ok(());
         }
         let heads_n = heads_n.unwrap();
+        _log.println(LogLevel::Info, "Request headers:", &heads_n);
+
+        let mut body = vec![];
+        client.read_body(&mut body)?;
+        _log.println(
+            LogLevel::Info,
+            "Request body: ",
+            str::from_utf8(&body).unwrap(),
+        );
+        client.write(&body)?;
 
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
@@ -155,7 +158,6 @@ impl Handler {
         }
         let mut http = http?;
 
-        _log.println(LogLevel::Info, "write headers to target", &heads_n);
         http.write(heads_n.as_bytes())?;
         let mut h = vec![];
         http.read_to_end(&mut h)?;

@@ -5,6 +5,9 @@ pub enum LogLevel {
     Error,
 }
 
+/// Log level [`Info`, `Warn`, `Error`]
+pub const LOG_LEVEL: LogLevel = LogLevel::Info;
+
 impl LogLevel {
     fn as_num(&self) -> u8 {
         use LogLevel::*;
