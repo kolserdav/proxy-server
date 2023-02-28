@@ -36,6 +36,8 @@ pub fn space_bef_cap(src: String) -> String {
         if let Some(_) = ch {
             if src != "OK" {
                 res.push(' ');
+            } else if v == 'O' {
+                res.push(' ')
             }
         }
         res.push(v);

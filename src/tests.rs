@@ -6,7 +6,7 @@ use super::{
     Builder,
 };
 use std::{
-    io::{Read, Result, Write},
+    io::{Result, Write},
     net::{TcpListener, TcpStream},
     str,
 };
@@ -20,6 +20,9 @@ const ECHO: [char; 4] = ['e', 'c', 'h', 'o'];
 #[test]
 pub fn test_proxy_server() -> Result<()> {
     println!("Start test of proxy");
+
+    let _log = Log::new(&super::LOG_LEVEL);
+
     let server = Builder::new();
     spawn(move || {
         target(server.target).expect("Error in target");
@@ -28,13 +31,35 @@ pub fn test_proxy_server() -> Result<()> {
         server.bind().expect("Error in proxy");
     });
     sleep(Duration::from_secs(1));
+
     let mut http = Http::connect(server.address)?;
+    http.write(format!("POST / HTTP/1.1{CRLF}Host: {}{CRLF}", server.address).as_bytes())?;
+    http.set_content_length(ECHO.len())?;
+    http.set_end_line()?;
+
+    let mut t_v = vec![];
+    let mut body: String = "".to_string();
+    for l in ECHO {
+        let d_str = l.clone().to_string();
+        t_v.push(d_str);
+        body.push(l);
+    }
+
+    http.write(body.as_bytes())?;
+    http.write(&[0u8])?;
+
     let mut buff: Vec<u8> = vec![];
-    http.write(format!("GET / HTTP/1.1{CRLF}Host: {}{CRLF}{CRLF}", server.address).as_bytes())?;
-    http.read_to_end(&mut buff)?;
+    http.read_headers(&mut buff)?;
+    _log.println(
+        LogLevel::Info,
+        "target read headers",
+        str::from_utf8(&buff).unwrap(),
+    );
     buff = vec![];
-    http.read_to_end(&mut buff)?;
+    http.read_headers(&mut buff)?;
+
     let res = str::from_utf8(&buff).unwrap();
+
     let sp = res.split(CRLF).filter(|d| !d.is_empty());
     let mut v = vec![];
     let mut i = 0;
@@ -44,10 +69,7 @@ pub fn test_proxy_server() -> Result<()> {
             v.push(s.to_string());
         }
     }
-    let mut t_v = vec![];
-    for l in ECHO {
-        t_v.push(l.clone().to_string());
-    }
+
     assert_eq!(t_v, v);
     println!("Test of proxy is end: {:?}", t_v);
     Ok(())
@@ -67,19 +89,41 @@ fn handle_target(client: TcpStream) -> Result<()> {
     let mut client = Http::from(client);
     _log.println(LogLevel::Info, "handle target", &client);
 
-    let heads = format!(
-        "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}{CRLF}"
+    let mut req_heads = vec![];
+    client.read_headers(&mut req_heads)?;
+    let req_heads = str::from_utf8(&req_heads).unwrap();
+    _log.println(LogLevel::Info, "read headers on target", &req_heads);
+
+    let res_heads = format!(
+        "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}"
     );
-    _log.println(LogLevel::Info, "target write headers", &heads);
+
     client.set_status(Status::OK)?;
-    client.write(heads.as_bytes())?;
-    for i in ECHO {
-        let chunk = format!("1{CRLF}{}{CRLF}", i);
-        client.write(chunk.as_bytes())?;
+    client.write(res_heads.as_bytes())?;
+    client.set_end_line()?;
+
+    println!("{}", format!("{:?}", req_heads));
+    let cont_len = get_content_length(&format!("{:?}", req_heads));
+    if let Some(v) = cont_len {
+        if v != 0 {
+            let mut body = vec![];
+            client.read_body(&mut body)?;
+            _log.println(
+                LogLevel::Info,
+                "request body on target: ",
+                str::from_utf8(&body).unwrap(),
+            );
+            for i in body {
+                let chunk = format!("1{CRLF}{}{CRLF}", str::from_utf8(&[i]).unwrap());
+                client.write(chunk.as_bytes())?;
+            }
+        }
+    } else {
+        _log.println(LogLevel::Warn, "get_content_length return", cont_len);
     }
 
     client.write("0{CRLF}{CRLF}".as_bytes())?;
-    sleep(Duration::from_millis(100));
+    sleep(Duration::from_millis(200));
     client.flush()?;
     _log.println(LogLevel::Info, "target return", client);
     Ok(())

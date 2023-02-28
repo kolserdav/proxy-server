@@ -25,7 +25,7 @@
 //! ```
 
 use std::{
-    io::{ErrorKind, Read, Result, Write},
+    io::{Result, Write},
     net::{TcpListener, TcpStream},
     str,
     thread::sleep,
@@ -127,12 +127,13 @@ impl Handler {
 
         let mut client = Http::from(client);
         let mut heads = vec![];
-        client.read_to_end(&mut heads)?;
+        client.read_headers(&mut heads)?;
         let heads_n = change_header_host(&heads);
         if let None = heads_n {
             _log.println(LogLevel::Warn, "Header host is missing", &heads);
             client.set_status(Status::BadRequest)?;
-            client.write("Content-Length: 0\r\n\r\n".as_bytes())?;
+            client.set_content_length(0)?;
+            client.set_end_line()?;
             return Ok(());
         }
         let heads_n = heads_n.unwrap();
@@ -142,7 +143,8 @@ impl Handler {
         if let Err(e) = &http {
             _log.println(LogLevel::Warn, "Failed proxy", e);
             client.set_status(Status::BadGateway)?;
-            client.write("Content-Length: 0\r\n\r\n".as_bytes())?;
+            client.set_content_length(0)?;
+            client.set_end_line()?;
             client.flush()?;
             sleep(Duration::from_millis(100));
             return Ok(());
@@ -161,42 +163,22 @@ impl Handler {
                     str::from_utf8(&body).unwrap(),
                 );
                 http.write(&body)?;
+                http.write(&[0u8])?;
             }
         }
 
         let mut h = vec![];
-        http.read_to_end(&mut h)?;
+        http.read_headers(&mut h)?;
 
         _log.println(
             LogLevel::Info,
-            "send headers to client",
+            "Send headers to client",
             str::from_utf8(&h).expect("failed decode bytes"),
         );
         client.write(&h).expect("failed send headers");
 
-        loop {
-            let mut b = [0; CHUNK_SIZE];
-            let r_res = http.read(&mut b);
-            if let Err(e) = r_res {
-                let log_l = match e.kind() {
-                    ErrorKind::ConnectionReset => LogLevel::Info,
-                    _ => LogLevel::Error,
-                };
-                _log.println(log_l, "Failed read chunk", e);
-            }
-            let mut buf = vec![];
-            b.map(|_b| {
-                if _b != 0 {
-                    buf.push(_b);
-                    return true;
-                }
-                false
-            });
-            if buf.len() == 0 {
-                break;
-            }
-            client.write(&buf).expect("Failed write chunk");
-        }
+        client.tunnel(&mut http, &_log)?;
+
         Ok(())
     }
 }

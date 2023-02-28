@@ -1,10 +1,12 @@
+use super::log::{Log, LogLevel};
+use super::prelude::constants::*;
 ///! Module [`Http`].
 ///! The minimum set of methods to work through [`TcpStream`].
 use super::prelude::*;
 use std::{
     fmt,
     fmt::{Display, Formatter},
-    io::{Read, Result, Write},
+    io::{ErrorKind, Read, Result, Write},
     net::TcpStream,
     str,
 };
@@ -65,6 +67,19 @@ impl Http {
         self.write(format!("{} {}{}{}", VERSION, status.code(), status, CRLF).as_bytes())
     }
 
+    /// Write content length header
+    pub fn set_content_length<T>(&mut self, len: T) -> Result<usize>
+    where
+        T: Sized + std::fmt::Debug,
+    {
+        self.write(format!("Content-Length: {:?}{CRLF}", len).as_bytes())
+    }
+
+    /// Write end line to socket
+    pub fn set_end_line(&mut self) -> Result<usize> {
+        self.write(format!("{CRLF}").as_bytes())
+    }
+
     /// Read request body
     pub fn read_body(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         loop {
@@ -73,7 +88,6 @@ impl Http {
             let mut exit = false;
             'b: for ch in chunk {
                 if ch == 0 {
-                    buf.push(ch);
                     exit = true;
                     break 'b;
                 }
@@ -85,16 +99,43 @@ impl Http {
         }
         Ok(buf.len())
     }
-}
 
-impl Read for Http {
-    /// Read chunk bytes from request
-    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        self.socket.read(buf)
+    /// Client - Target tunnel core
+    pub fn tunnel(&mut self, http: &mut Self, _log: &Log) -> Result<usize> {
+        let mut size: usize = 0;
+        loop {
+            let mut b = [0; CHUNK_SIZE];
+            let r_res = http.read(&mut b);
+            if let Err(e) = r_res {
+                let log_l = match e.kind() {
+                    ErrorKind::ConnectionReset => LogLevel::Info,
+                    _ => LogLevel::Error,
+                };
+                _log.println(log_l, "Failed read chunk", e);
+            }
+            let mut buf = vec![];
+            b.map(|_b| {
+                if _b != 0 {
+                    buf.push(_b);
+                    return true;
+                }
+                false
+            });
+
+            size += buf.len();
+
+            if buf.len() == 0 {
+                break;
+            }
+
+            self.write(&buf)?;
+        }
+
+        Ok(size)
     }
 
     /// Read request headers by one byte for fist empty line
-    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+    pub fn read_headers(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         let mut size = 0;
         loop {
             let mut b = [0; 1];
@@ -115,6 +156,13 @@ impl Read for Http {
             buf.push(b);
         }
         Ok(size)
+    }
+}
+
+impl Read for Http {
+    /// Read chunk bytes from request
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        self.socket.read(buf)
     }
 }
 
