@@ -138,15 +138,6 @@ impl Handler {
         let heads_n = heads_n.unwrap();
         _log.println(LogLevel::Info, "Request headers:", &heads_n);
 
-        let mut body = vec![];
-        client.read_body(&mut body)?;
-        _log.println(
-            LogLevel::Info,
-            "Request body: ",
-            str::from_utf8(&body).unwrap(),
-        );
-        client.write(&body)?;
-
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
             _log.println(LogLevel::Warn, "Failed proxy", e);
@@ -159,6 +150,20 @@ impl Handler {
         let mut http = http?;
 
         http.write(heads_n.as_bytes())?;
+
+        if let Some(v) = get_content_length(&heads_n) {
+            if v != 0 {
+                let mut body = vec![];
+                client.read_body(&mut body)?;
+                _log.println(
+                    LogLevel::Info,
+                    "Request body: ",
+                    str::from_utf8(&body).unwrap(),
+                );
+                http.write(&body)?;
+            }
+        }
+
         let mut h = vec![];
         http.read_to_end(&mut h)?;
 
