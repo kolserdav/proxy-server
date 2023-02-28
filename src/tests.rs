@@ -19,8 +19,6 @@ const ECHO: [char; 4] = ['e', 'c', 'h', 'o'];
 
 #[test]
 pub fn test_proxy_server() -> Result<()> {
-    println!("Start test of proxy");
-
     let _log = Log::new(&super::LOG_LEVEL);
 
     let server = Builder::new();
@@ -71,7 +69,6 @@ pub fn test_proxy_server() -> Result<()> {
     }
 
     assert_eq!(t_v, v);
-    println!("Test of proxy is end: {:?}", t_v);
     Ok(())
 }
 
@@ -102,7 +99,6 @@ fn handle_target(client: TcpStream) -> Result<()> {
     client.write(res_heads.as_bytes())?;
     client.set_end_line()?;
 
-    println!("{}", format!("{:?}", req_heads));
     let cont_len = get_content_length(&format!("{:?}", req_heads));
     if let Some(v) = cont_len {
         if v != 0 {

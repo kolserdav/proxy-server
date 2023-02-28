@@ -47,21 +47,16 @@ pub fn space_bef_cap(src: String) -> String {
 
 /// Parse content length from request headers
 pub fn get_content_length(src: &String) -> Option<usize> {
-    let low = Regex::new(r"content-length:\s*\d+").unwrap().captures(&src);
+    let low = Regex::new(r"(c|C)ontent-(l|L)ength:\s*\d+")
+        .unwrap()
+        .captures(&src);
 
+    #[allow(unused_assignments)]
     let mut check: Option<&str> = None;
     if let Some(v) = low {
         let low = v.get(0).unwrap();
         check = Some(low.as_str());
-    } else {
-        let up = Regex::new(r"Content-Length:\s*\d+").unwrap().captures(&src);
-        if let Some(_v) = up {
-            let up = _v.get(0).unwrap();
-            check = Some(up.as_str());
-        } else {
-            return None;
-        }
-    };
+    }
 
     if let None = check {
         return None;

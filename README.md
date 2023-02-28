@@ -1,7 +1,7 @@
 # proxy-server
 
-Low level proxy server
-To implement request proxying, only standard [`TcpStream`] was used without additional libraries
+Low level proxy server.
+To implement request proxying, only standard `TcpStream` was used without additional libraries.
 
 ## Examples
 
