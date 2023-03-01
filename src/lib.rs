@@ -48,10 +48,6 @@ mod tests;
 
 pub type ChangeTarget = fn(&str) -> &'static str;
 
-trait State {
-    fn change_target(self, cb: ChangeTarget) -> String;
-}
-
 /// Structure for proxy server configuration
 #[derive(Clone, Copy)]
 pub struct Builder {
@@ -60,14 +56,6 @@ pub struct Builder {
     pub log_level: LogLevel,
     pub threads: usize,
     pub chunk_size: usize,
-}
-
-impl State for Builder {
-    fn change_target(mut self, cb: ChangeTarget) -> String {
-        let new_tar = cb(self.target);
-        self.target = new_tar;
-        self.target.to_string()
-    }
 }
 
 impl Builder {
@@ -108,31 +96,21 @@ impl Builder {
 
     /// Callback for change target on fly
     pub fn with_change_target(mut self, cb: ChangeTarget) -> Self {
-        let data = Arc::new(Mutex::new(self));
-        let (tx, rx) = std::sync::mpsc::channel();
-        let (data, tx) = (Arc::clone(&data), tx.clone());
-
-        std::thread::spawn(move || loop {
-            sleep(Duration::from_secs(1));
-            // println!("{}", self.target);
-            let mut data = data.lock().unwrap();
-            let r = cb(self.target);
-            if r != data.target {
-                data.target = r;
-            }
-            tx.send(data.target).unwrap();
-        });
-        std::thread::spawn(move || {
-            let _log = Log::new(&self.log_level);
-
-            for r in rx {
-                if r != self.target {
-                    self.target = r;
-                    //     _log.println(LogLevel::Info, "target changed", self.target);
-                }
-            }
-        });
+        println!("7");
+        self.change_target(cb);
         self
+    }
+
+    async fn change_target(mut self, cb: ChangeTarget) {
+        let _log = Log::new(&self.log_level);
+        loop {
+            sleep(Duration::from_secs(1));
+            let new_t = cb(self.target);
+            if new_t != self.target {
+                self.target = new_t;
+                _log.println(LogLevel::Info, "change target", self.target);
+            }
+        }
     }
 
     /// Proxy server listener releasing [`std::net::TcpListener`] via thread pool

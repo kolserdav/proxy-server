@@ -1,9 +1,9 @@
 use proxy_server::{log::LogLevel, Builder, ChangeTarget};
 
 fn get_actual_target(old: &str) -> &'static str {
-    let target1 = "127.0.0.1:3002";
+    let target1 = "127.0.0.1:3001";
     let target2 = "127.0.0.1:3003";
-
+    println!("{}", old);
     match old {
         target1 => target2,
         target2 => target1,
