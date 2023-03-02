@@ -26,7 +26,7 @@ pub fn test_proxy_server() -> Result<()> {
         target(server.target).expect("Error in target");
     });
     spawn(move || {
-        server.bind().expect("Error in proxy");
+        server.bind(None).expect("Error in proxy");
     });
     sleep(Duration::from_secs(1));
 
@@ -128,7 +128,7 @@ fn handle_target(client: TcpStream) -> Result<()> {
 #[test]
 fn test_change_header_host() {
     let heads = format!("Host: {}{CRLF}", super::PROXY_ADDRESS);
-    let head_n = change_header_host(heads.as_bytes());
+    let head_n = change_header_host(heads.as_bytes(), super::TARGET_ADDRESS);
     assert!(None != head_n);
     let head_n = head_n.unwrap();
     assert_eq!(head_n, format!("Host: {}{CRLF}", super::TARGET_ADDRESS));

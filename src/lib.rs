@@ -6,7 +6,7 @@
 //! use proxy_server::Builder;                                                                       
 //!      
 //! fn main() {
-//!     Builder::new().bind().expect("Error in proxy");
+//!     Builder::new().bind(None).expect("Error in proxy");
 //! }
 //! ```
 //! With custom params:
@@ -19,7 +19,29 @@
 //!         .with_target("127.0.0.1:3001")
 //!         .with_log_level(LogLevel::Warn)
 //!         .with_threads(4)
-//!         .bind()
+//!         .bind(None)
+//!         .expect("Error in proxy");
+//! }
+//! ```
+//! With check and change target if needed on every request
+//! ```no_run
+//!
+//! use proxy_server::{Builder, ChangeTarget};                  
+//! fn get_actual_target(old: &str) -> &'static str {     
+//!     let target1 = "127.0.0.1:3001";                   
+//!     let target2 = "127.0.0.1:3003";
+//!     let res = match old {                                 
+//!         "127.0.0.1:3001" => target2,
+//!         "127.0.0.1::3003" => target1,
+//!         _ => target1,
+//!         };
+//!         res
+//! }
+//!
+//! fn main() {
+//!     let cb: ChangeTarget = |old| get_actual_target(old);                                          
+//!     Builder::new()                          
+//!         .bind(Some(cb))
 //!         .expect("Error in proxy");
 //! }
 //! ```
@@ -29,7 +51,6 @@ use std::{
     io::{Error, ErrorKind, Result, Write},
     net::{TcpListener, TcpStream},
     str,
-    sync::{Arc, Mutex},
     thread::sleep,
     time::Duration,
 };
@@ -46,16 +67,17 @@ use prelude::*;
 #[cfg(test)]
 mod tests;
 
+/// Callback function for change target on fly.
+/// Use only fast method because this function if it provieded then run every request again.
 pub type ChangeTarget = fn(&str) -> &'static str;
 
 /// Structure for proxy server configuration
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Builder {
     pub address: &'static str,
     pub target: &'static str,
     pub log_level: LogLevel,
     pub threads: usize,
-    pub chunk_size: usize,
 }
 
 impl Builder {
@@ -66,7 +88,6 @@ impl Builder {
             target: TARGET_ADDRESS,
             log_level: LOG_LEVEL,
             threads: THREADS,
-            chunk_size: CHUNK_SIZE,
         }
     }
 
@@ -94,37 +115,21 @@ impl Builder {
         self
     }
 
-    /// Callback for change target on fly
-    pub fn with_change_target(mut self, cb: ChangeTarget) -> Self {
-        println!("7");
-        self.change_target(cb);
-        self
-    }
-
-    async fn change_target(mut self, cb: ChangeTarget) {
-        let _log = Log::new(&self.log_level);
-        loop {
-            sleep(Duration::from_secs(1));
-            let new_t = cb(self.target);
-            if new_t != self.target {
-                self.target = new_t;
-                _log.println(LogLevel::Info, "change target", self.target);
-            }
-        }
-    }
-
     /// Proxy server listener releasing [`std::net::TcpListener`] via thread pool
-    pub fn bind(self) -> Result<Infallible> {
+    pub fn bind(mut self, cb: Option<ChangeTarget>) -> Result<Infallible> {
         let listener = TcpListener::bind(&self.address)?;
 
         let _log = Log::new(&self.log_level);
         println!(
-            "Listening port: {}; Chunk size: {}KB; Log level: {:?}",
-            &self.address, CHUNK_SIZE, &self.log_level
+            "Listening: {}; Target: {}; Chunk size: {}KB; Log level: {:?}",
+            &self.address, &self.target, CHUNK_SIZE, &self.log_level
         );
 
         let pool = ThreadPool::new(self.threads);
         for stream in listener.incoming() {
+            if let Some(func) = cb {
+                self.target = func(&self.target);
+            }
             let cl = Handler::new(self);
             pool.execute(|| {
                 cl.handle_proxy(stream.expect("Error in incoming stream"))
@@ -152,7 +157,7 @@ impl Handler {
         let mut client = Http::from(client);
         let mut heads = vec![];
         client.read_headers(&mut heads)?;
-        let heads_n = change_header_host(&heads);
+        let heads_n = change_header_host(&heads, &self.config.target);
         if let None = heads_n {
             _log.println(LogLevel::Warn, "Header host is missing", &heads);
             client.set_status(Status::BadRequest)?;

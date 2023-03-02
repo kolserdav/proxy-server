@@ -1,10 +1,9 @@
 use regex::Regex;
 use std::str;
 pub mod constants;
-use constants::*;
 
 /// For change request headers host to host of target
-pub fn change_header_host(heads: &[u8]) -> Option<String> {
+pub fn change_header_host(heads: &[u8], target: &str) -> Option<String> {
     let str_h = str::from_utf8(&heads).expect(
         "Fai
 led parse incoming headers",
@@ -20,7 +19,7 @@ led parse incoming headers",
         "
 Failed stringify heads",
     );
-    Some(heads_str.replace(old_host, format!("Host: {}\r\n", TARGET_ADDRESS).as_str()))
+    Some(heads_str.replace(old_host, format!("Host: {}\r\n", target).as_str()))
 }
 
 /// Set spaces before capitalize letters. For change [`Http::Status`] enum items.

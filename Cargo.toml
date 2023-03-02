@@ -1,6 +1,6 @@
 [package]
 name = "proxy-server"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Low level proxy server"
 authors = ["Sergey Kolmiller <uyem.ru@gmail.com>"]
@@ -16,7 +16,7 @@ rust-version = "1.67"
 name = "proxy_server"
 
 [features]
-default = ["chunk_10KB"]
+default = ["chunk_1KB"]
 chunk_1KB = []
 chunk_5KB = []
 chunk_10KB = []
