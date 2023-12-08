@@ -46,17 +46,15 @@ pub fn test_proxy_server() -> Result<()> {
     http.write(body.as_bytes())?;
     http.write(&[0u8])?;
 
-    let mut buff: Vec<u8> = vec![];
-    http.read_headers(&mut buff)?;
+    let buff = http.read_headers()?;
     _log.println(
         LogLevel::Info,
         "target read headers",
         str::from_utf8(&buff).unwrap(),
     );
-    buff = vec![];
-    http.read_headers(&mut buff)?;
+    let buff = http.read_headers()?;
 
-    let res = str::from_utf8(&buff).unwrap();
+    let res = stringify_headers(&buff);
 
     let sp = res.split(CRLF).filter(|d| !d.is_empty());
     let mut v = vec![];
@@ -86,9 +84,8 @@ fn handle_target(client: TcpStream) -> Result<()> {
     let mut client = Http::from(client);
     _log.println(LogLevel::Info, "handle target", &client);
 
-    let mut req_heads = vec![];
-    client.read_headers(&mut req_heads)?;
-    let req_heads = str::from_utf8(&req_heads).unwrap();
+    let req_heads = client.read_headers()?;
+    let req_heads = stringify_headers(&req_heads);
     _log.println(LogLevel::Info, "read headers on target", &req_heads);
 
     let res_heads = format!(
@@ -119,7 +116,6 @@ fn handle_target(client: TcpStream) -> Result<()> {
     }
 
     client.set_zero_byte()?;
-    sleep(Duration::from_millis(200));
     client.flush()?;
     _log.println(LogLevel::Info, "target return", client);
     Ok(())
@@ -128,7 +124,7 @@ fn handle_target(client: TcpStream) -> Result<()> {
 #[test]
 fn test_change_header_host() {
     let heads = format!("Host: {}{CRLF}", super::PROXY_ADDRESS);
-    let head_n = change_header_host(heads.as_bytes(), super::TARGET_ADDRESS);
+    let head_n = change_header_host(heads.as_str(), super::TARGET_ADDRESS);
     assert!(None != head_n);
     let head_n = head_n.unwrap();
     assert_eq!(head_n, format!("Host: {}{CRLF}", super::TARGET_ADDRESS));

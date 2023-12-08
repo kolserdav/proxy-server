@@ -155,9 +155,8 @@ impl Handler {
         _log.println(LogLevel::Info, "handle proxy", &client);
 
         let mut client = Http::from(client);
-        let mut heads = vec![];
-        client.read_headers(&mut heads)?;
-        let heads_n = change_header_host(&heads, &self.config.target);
+        let heads = client.read_headers()?;
+        let heads_n = change_header_host(stringify_headers(&heads).as_str(), &self.config.target);
         if let None = heads_n {
             _log.println(LogLevel::Warn, "Header host is missing", &heads);
             client.set_status(Status::BadRequest)?;
@@ -196,13 +195,11 @@ impl Handler {
             }
         }
 
-        let mut h = vec![];
-        http.read_headers(&mut h)?;
-
+        let h = http.read_headers()?;
         _log.println(
             LogLevel::Info,
             "Send headers to client",
-            str::from_utf8(&h).expect("failed decode bytes"),
+            stringify_headers(&h),
         );
         client.write(&h).expect("failed send headers");
 

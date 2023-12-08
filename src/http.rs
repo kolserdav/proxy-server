@@ -140,8 +140,8 @@ impl Http {
     }
 
     /// Read request headers by one byte for fist empty line
-    pub fn read_headers(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
-        let mut size = 0;
+    pub fn read_headers(&mut self) -> Result<Vec<u8>> {
+        let mut buf: Vec<u8> = vec![];
         loop {
             let mut b = [0; 1];
             let len = self.read(&mut b)?;
@@ -150,7 +150,6 @@ impl Http {
             }
             let b = b[0];
             let len = buf.len();
-            size += 1;
             if len > 2
                 && b == 10
                 && (buf[len - 1] == 10 || (buf[len - 1] == 13 && buf[len - 2] == 10))
@@ -160,7 +159,7 @@ impl Http {
             }
             buf.push(b);
         }
-        Ok(size)
+        Ok(buf)
     }
 }
 

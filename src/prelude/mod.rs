@@ -3,23 +3,27 @@ use std::str;
 pub mod constants;
 
 /// For change request headers host to host of target
-pub fn change_header_host(heads: &[u8], target: &str) -> Option<String> {
-    let str_h = str::from_utf8(&heads).expect(
-        "Fai
-led parse incoming headers",
-    );
+pub fn change_header_host(heads: &str, target: &str) -> Option<String> {
     let reg = Regex::new(r"Host: *.*\r\n").unwrap();
-    let capts = reg.captures(str_h);
+    let capts = reg.captures(heads);
     if let None = capts {
         return None;
     }
     let capts = capts.unwrap();
     let old_host = capts.get(0).unwrap().as_str();
-    let heads_str = str::from_utf8(heads).expect(
-        "
-Failed stringify heads",
-    );
-    Some(heads_str.replace(old_host, format!("Host: {}\r\n", target).as_str()))
+    Some(heads.replace(old_host, format!("Host: {}\r\n", target).as_str()))
+}
+
+/// Stringify headers
+pub fn stringify_headers(heads: &Vec<u8>) -> String {
+    let s = str::from_utf8(heads);
+    match s {
+        Ok(val) => val.to_string(),
+        Err(err) => {
+            println!("Failed to stringify headers: {:?}", err);
+            "".to_string()
+        }
+    }
 }
 
 /// Set spaces before capitalize letters. For change [`Http::Status`] enum items.
