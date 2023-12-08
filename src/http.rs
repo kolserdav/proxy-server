@@ -80,6 +80,11 @@ impl Http {
         self.write(format!("{CRLF}").as_bytes())
     }
 
+    /// Write end of request
+    pub fn set_zero_byte(&mut self) -> Result<usize> {
+        self.write(format!("0{CRLF}{CRLF}").as_bytes())
+    }
+
     /// Read request body
     pub fn read_body(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
         loop {

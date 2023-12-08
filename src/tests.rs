@@ -118,7 +118,7 @@ fn handle_target(client: TcpStream) -> Result<()> {
         _log.println(LogLevel::Warn, "get_content_length return", cont_len);
     }
 
-    client.write("0{CRLF}{CRLF}".as_bytes())?;
+    client.set_zero_byte()?;
     sleep(Duration::from_millis(200));
     client.flush()?;
     _log.println(LogLevel::Info, "target return", client);
