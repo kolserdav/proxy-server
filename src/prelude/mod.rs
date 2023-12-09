@@ -1,5 +1,6 @@
+use crate::http::CRLF;
 use regex::Regex;
-use std::str;
+use std::{fmt, str};
 pub mod constants;
 
 /// For change request headers host to host of target
@@ -12,6 +13,59 @@ pub fn change_header_host(heads: &str, target: &str) -> Option<String> {
     let capts = capts.unwrap();
     let old_host = capts.get(0).unwrap().as_str();
     Some(heads.replace(old_host, format!("Host: {}\r\n", target).as_str()))
+}
+
+#[derive(Debug)]
+pub struct Header {
+    name: String,
+    value: String,
+}
+
+impl fmt::Display for Header {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}: {}", self.name, self.value)
+    }
+}
+
+/// Parse headers
+pub fn parse_headers(heads: String) -> Vec<Header> {
+    let mut res: Vec<Header> = vec![];
+    let heads = heads.split(CRLF);
+    for h in heads {
+        // TODO check it reg
+        let reg_name = Regex::new(r"^.+: ").unwrap();
+        let capts_name = reg_name.captures(h);
+        if let None = capts_name {
+            continue;
+        }
+        let capts_name = capts_name.unwrap();
+        let name = capts_name
+            .get(0)
+            .unwrap()
+            .as_str()
+            .to_string()
+            // FIXME
+            .replace(": ", "");
+
+        let reg_value = Regex::new(r": *.*$").unwrap();
+        let capts_value = reg_value.captures(h);
+        if let None = capts_value {
+            res.push(Header {
+                name,
+                value: "".to_string(),
+            });
+            continue;
+        }
+        let capts_value = capts_value.unwrap();
+        let value = capts_value
+            .get(0)
+            .unwrap()
+            .as_str()
+            .to_string()
+            .replace(": ", "");
+        res.push(Header { name, value });
+    }
+    res
 }
 
 /// Stringify headers

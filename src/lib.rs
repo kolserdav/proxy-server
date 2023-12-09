@@ -165,7 +165,11 @@ impl Handler {
             return Ok(());
         }
         let heads_n = heads_n.unwrap();
-        _log.println(LogLevel::Info, "Request headers:", &heads_n);
+        _log.println(
+            LogLevel::Info,
+            "Request headers:",
+            parse_headers(heads_n.clone()),
+        );
 
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
@@ -196,11 +200,9 @@ impl Handler {
         }
 
         let h = http.read_headers()?;
-        _log.println(
-            LogLevel::Info,
-            "Send headers to client",
-            stringify_headers(&h),
-        );
+        let h_s = stringify_headers(&h);
+        let heads = parse_headers(h_s);
+        _log.println(LogLevel::Info, "Send headers to client", heads);
         client.write(&h).expect("failed send headers");
 
         client.tunnel(&mut http, &_log)?;

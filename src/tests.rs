@@ -47,11 +47,9 @@ pub fn test_proxy_server() -> Result<()> {
     http.write(&[0u8])?;
 
     let buff = http.read_headers()?;
-    _log.println(
-        LogLevel::Info,
-        "target read headers",
-        str::from_utf8(&buff).unwrap(),
-    );
+    let heads = stringify_headers(&buff);
+    let h = parse_headers(heads);
+    _log.println(LogLevel::Info, "target read headers", h);
     let buff = http.read_headers()?;
 
     let res = stringify_headers(&buff);
