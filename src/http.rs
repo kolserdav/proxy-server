@@ -86,7 +86,8 @@ impl Http {
     }
 
     /// Read request body
-    pub fn read_body(&mut self, buf: &mut Vec<u8>) -> Result<usize> {
+    pub fn read_body(&mut self) -> Result<Vec<u8>> {
+        let mut buf: Vec<u8> = vec![];
         loop {
             let mut chunk = [0; super::CHUNK_SIZE];
             self.read(&mut chunk)?;
@@ -102,7 +103,7 @@ impl Http {
                 break;
             }
         }
-        Ok(buf.len())
+        Ok(buf)
     }
 
     /// Client - Target tunnel core

@@ -97,8 +97,7 @@ fn handle_target(client: TcpStream) -> Result<()> {
     let cont_len = get_content_length(&format!("{:?}", req_heads));
     if let Some(v) = cont_len {
         if v != 0 {
-            let mut body = vec![];
-            client.read_body(&mut body)?;
+            let body = client.read_body()?;
             _log.println(
                 LogLevel::Info,
                 "request body on target: ",
