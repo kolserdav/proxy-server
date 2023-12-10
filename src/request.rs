@@ -1,40 +1,23 @@
-use crate::http::CRLF;
+use crate::{header::Header, http::CRLF};
 use regex::Regex;
 use serde::Serialize;
-use std::{fmt, str};
+use std::str;
 
 #[derive(Debug, Serialize)]
-pub struct Header {
-    pub name: String,
-    pub value: String,
-}
-
-impl fmt::Display for Header {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {}", self.name, self.value)
-    }
-}
-
-#[derive(Debug, Serialize)]
-pub struct Headers {
+pub struct Request {
+    pub protocol: String,
+    pub method: String,
+    pub status: u16,
+    pub status_text: String,
     pub content_length: usize,
-    pub raw: String,
-    pub parsed: Vec<Header>,
+    pub headers_raw: String,
+    pub headers: Vec<Header>,
 }
 
-impl Headers {
+impl Request {
     pub fn new(buffer: Vec<u8>) -> Self {
         let raw = stringify(&buffer);
-        let mut content_length: usize = 0;
-        let content_length_op = get_content_length(&raw);
-        if let Some(val) = content_length_op {
-            content_length = val;
-        }
-        Headers {
-            content_length,
-            raw: raw.clone(),
-            parsed: parse(raw),
-        }
+        Request::from_string(raw)
     }
 
     pub fn from_string(raw: String) -> Self {
@@ -43,20 +26,21 @@ impl Headers {
         if let Some(val) = content_length_op {
             content_length = val;
         }
-        Headers {
+        Request {
+            protocol: get_protocol(&raw),
+            status: get_status(&raw),
+            status_text: get_status_text(&raw),
+            method: get_method(&raw),
             content_length,
-            raw: raw.clone(),
-            parsed: parse(raw),
+            headers_raw: raw.clone(),
+            headers: parse(raw),
         }
     }
 
-    pub fn change_host(self, target: &str) -> Self {
-        let raw = change_host(self.raw, target);
-        Headers {
-            raw: raw.clone(),
-            parsed: parse(raw),
-            content_length: self.content_length,
-        }
+    pub fn change_host(&mut self, target: &str) {
+        let raw = change_host(self.headers_raw.clone(), target);
+        self.headers_raw = raw.clone();
+        self.headers = parse(raw);
     }
 }
 
@@ -126,7 +110,7 @@ fn change_host(heads: String, target: &str) -> String {
 }
 
 /// Parse content length from request headers
-pub fn get_content_length(src: &String) -> Option<usize> {
+fn get_content_length(src: &String) -> Option<usize> {
     let low = Regex::new(r"(c|C)ontent-(l|L)ength:\s*\d+")
         .unwrap()
         .captures(&src);
@@ -157,4 +141,56 @@ pub fn get_content_length(src: &String) -> Option<usize> {
         return None;
     }
     Some(num.unwrap())
+}
+
+fn get_method(raw: &String) -> String {
+    let reg = Regex::new(r"\w+").unwrap();
+    let capts = reg.captures(raw.as_str());
+    if let None = capts {
+        return "OPTIONS".to_string();
+    }
+    let capts = capts.unwrap();
+    let method = capts.get(0).unwrap().as_str();
+    method.to_string()
+}
+
+fn get_protocol(raw: &String) -> String {
+    let reg = Regex::new(r"HTTPS?\/\d+\.\d+").unwrap();
+    let capts = reg.captures(raw.as_str());
+    if let None = capts {
+        return "OPTIONS".to_string();
+    }
+    let capts = capts.unwrap();
+    let protocol = capts.get(0).unwrap().as_str();
+    protocol.to_string()
+}
+
+fn get_status(raw: &String) -> u16 {
+    let reg = Regex::new(r"\d{3}").unwrap();
+    let capts = reg.captures(raw.as_str());
+    let mut status: u16 = 500;
+    if let None = capts {
+        return status;
+    }
+    let capts = capts.unwrap();
+    let status_r = capts.get(0).unwrap().as_str().parse::<u16>();
+    if let Ok(val) = status_r {
+        status = val;
+    }
+    status
+}
+
+fn get_status_text(raw: &String) -> String {
+    let reg = Regex::new(r"\d{3}\s+\w+").unwrap();
+    let capts = reg.captures(raw.as_str());
+    let mut status_text: String = "Internal Server Error".to_string();
+    if let None = capts {
+        return status_text;
+    }
+    let capts = capts.unwrap();
+    status_text = capts.get(0).unwrap().as_str().to_string();
+    Regex::new(r"^\d{3}\s+")
+        .unwrap()
+        .replace_all(&status_text, "")
+        .to_string()
 }

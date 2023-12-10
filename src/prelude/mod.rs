@@ -6,9 +6,9 @@ use std::{
 };
 
 use crate::{
-    headers::Headers,
     http::{Http, Status, CRLF},
     log::{Log, LogLevel},
+    request::Request,
 };
 pub mod constants;
 
@@ -50,8 +50,8 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
     _log.println(LogLevel::Info, TAG, "start client", &client);
 
     let req_heads = client.read_headers()?;
-    let heads = Headers::new(req_heads);
-    _log.println(LogLevel::Info, TAG, "headers", &heads.parsed);
+    let req = Request::new(req_heads);
+    _log.println(LogLevel::Info, TAG, "headers", &req.headers);
 
     let res_heads = format!(
         "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}"
@@ -61,7 +61,7 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
     client.write(res_heads.as_bytes())?;
     client.set_end_line()?;
 
-    if heads.content_length != 0 {
+    if req.content_length != 0 {
         let body = client.read_body()?;
         _log.println(LogLevel::Info, TAG, "body", str::from_utf8(&body).unwrap());
         for i in body {
