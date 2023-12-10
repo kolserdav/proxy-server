@@ -187,8 +187,7 @@ impl Handler {
 
         if let Some(v) = get_content_length(&heads_n) {
             if v != 0 {
-                let mut body = vec![];
-                client.read_body(&mut body)?;
+                let body = client.read_body()?;
                 _log.println(
                     LogLevel::Info,
                     "Request body: ",
