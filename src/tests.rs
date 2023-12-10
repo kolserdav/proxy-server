@@ -1,21 +1,19 @@
+use crate::{headers::Headers, prelude::target};
+
 #[cfg(test)]
 use super::{
-    http::{Http, Status, CRLF},
+    http::{Http, CRLF},
     log::{Log, LogLevel},
-    prelude::*,
     Builder,
 };
-use std::{
-    io::{Result, Write},
-    net::{TcpListener, TcpStream},
-    str,
-};
+use std::io::{Result, Write};
 use std::{
     thread::{sleep, spawn},
     time::Duration,
 };
 
 const ECHO: [char; 4] = ['e', 'c', 'h', 'o'];
+const TAG: &str = "Test proxy server";
 
 #[test]
 pub fn test_proxy_server() -> Result<()> {
@@ -42,87 +40,26 @@ pub fn test_proxy_server() -> Result<()> {
         t_v.push(d_str);
         body.push(l);
     }
+    let send_body = t_v.join("");
 
     http.write(body.as_bytes())?;
     http.write(&[0u8])?;
 
     let buff = http.read_headers()?;
-    let heads = stringify_headers(&buff);
-    let h = parse_headers(heads);
-    _log.println(LogLevel::Info, "target read headers", h);
-    let buff = http.read_headers()?;
+    let heads = Headers::new(buff);
+    _log.println(LogLevel::Info, TAG, "headers", &heads.parsed);
 
-    let res = stringify_headers(&buff);
+    let b = http.read_body()?;
+    let rec_body = http.body_to_string(b)?;
+    _log.println(LogLevel::Info, TAG, "body: ", &rec_body);
 
-    let sp = res.split(CRLF).filter(|d| !d.is_empty());
-    let mut v = vec![];
-    let mut i = 0;
-    for s in sp {
-        i += 1;
-        if i % 2 == 0 {
-            v.push(s.to_string());
-        }
-    }
-
-    assert_eq!(t_v, v);
-    Ok(())
-}
-
-pub fn target(addr: &str) -> Result<()> {
-    let listener = TcpListener::bind(addr)?;
-    println!("listening target on {}", addr);
-    for stream in listener.incoming() {
-        handle_target(stream?)?;
-    }
-    Ok(())
-}
-
-fn handle_target(client: TcpStream) -> Result<()> {
-    let _log = Log::new(&super::LOG_LEVEL);
-    let mut client = Http::from(client);
-    _log.println(LogLevel::Info, "handle target", &client);
-
-    let req_heads = client.read_headers()?;
-    let req_heads = stringify_headers(&req_heads);
-    _log.println(LogLevel::Info, "read headers on target", &req_heads);
-
-    let res_heads = format!(
-        "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}"
-    );
-
-    client.set_status(Status::OK)?;
-    client.write(res_heads.as_bytes())?;
-    client.set_end_line()?;
-
-    let cont_len = get_content_length(&format!("{:?}", req_heads));
-    if let Some(v) = cont_len {
-        if v != 0 {
-            let body = client.read_body()?;
-            _log.println(
-                LogLevel::Info,
-                "request body on target: ",
-                str::from_utf8(&body).unwrap(),
-            );
-            for i in body {
-                let chunk = format!("1{CRLF}{}{CRLF}", str::from_utf8(&[i]).unwrap());
-                client.write(chunk.as_bytes())?;
-            }
-        }
-    } else {
-        _log.println(LogLevel::Warn, "get_content_length return", cont_len);
-    }
-
-    client.set_zero_byte()?;
-    client.flush()?;
-    _log.println(LogLevel::Info, "target return", client);
+    assert_eq!(send_body, rec_body);
     Ok(())
 }
 
 #[test]
 fn test_change_header_host() {
-    let heads = format!("Host: {}{CRLF}", super::PROXY_ADDRESS);
-    let head_n = change_header_host(heads.as_str(), super::TARGET_ADDRESS);
-    assert!(None != head_n);
-    let head_n = head_n.unwrap();
-    assert_eq!(head_n, format!("Host: {}{CRLF}", super::TARGET_ADDRESS));
+    let heads = Headers::from_string(format!("Host: {}{CRLF}", super::PROXY_ADDRESS));
+    let heads = heads.change_host(super::TARGET_ADDRESS);
+    assert_eq!(heads.raw, format!("Host: {}{CRLF}", super::TARGET_ADDRESS));
 }

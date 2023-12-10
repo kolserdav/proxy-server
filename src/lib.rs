@@ -58,18 +58,19 @@ mod thread_pool;
 use thread_pool::ThreadPool;
 pub mod http;
 use http::{Http, Status};
+pub mod headers;
+use headers::Headers;
 pub mod log;
 use log::{Log, LogLevel, LOG_LEVEL};
-mod prelude;
+pub mod prelude;
 use prelude::constants::*;
-use prelude::*;
 
 #[cfg(test)]
 mod tests;
 
 /// Callback function for change target on fly.
 /// Use only fast method because this function if it provieded then run every request again.
-pub type ChangeTarget = fn(&str) -> &'static str;
+pub type ChangeTarget = fn(&'static str) -> &'static str;
 
 /// Structure for proxy server configuration
 #[derive(Clone, Copy, Debug)]
@@ -150,30 +151,22 @@ impl Handler {
     }
 
     fn handle_proxy(self, client: TcpStream) -> Result<()> {
+        const TAG: &str = "Handle proxy";
         let _log = Log::new(&self.config.log_level);
 
-        _log.println(LogLevel::Info, "handle proxy", &client);
+        _log.println(LogLevel::Info, TAG, "client", &client);
 
         let mut client = Http::from(client);
-        let heads = client.read_headers()?;
-        let heads_n = change_header_host(stringify_headers(&heads).as_str(), &self.config.target);
-        if let None = heads_n {
-            _log.println(LogLevel::Warn, "Header host is missing", &heads);
-            client.set_status(Status::BadRequest)?;
-            client.set_content_length(0)?;
-            client.set_end_line()?;
-            return Ok(());
-        }
-        let heads_n = heads_n.unwrap();
-        _log.println(
-            LogLevel::Info,
-            "Request headers:",
-            parse_headers(heads_n.clone()),
-        );
+
+        let head_client_buf = client.read_headers()?;
+        let mut heads_client = Headers::new(head_client_buf);
+
+        _log.println(LogLevel::Info, TAG, "client headers", &heads_client.parsed);
+        heads_client = heads_client.change_host(&self.config.target);
 
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
-            _log.println(LogLevel::Warn, "Failed proxy", e);
+            _log.println(LogLevel::Warn, TAG, "Failed proxy", e);
             client.set_status(Status::BadGateway)?;
             client.set_content_length(0)?;
             client.set_end_line()?;
@@ -183,26 +176,26 @@ impl Handler {
         }
         let mut http = http?;
 
-        http.write(heads_n.as_bytes())?;
+        http.write(heads_client.raw.as_bytes())?;
 
-        if let Some(v) = get_content_length(&heads_n) {
-            if v != 0 {
-                let body = client.read_body()?;
-                _log.println(
-                    LogLevel::Info,
-                    "Request body: ",
-                    str::from_utf8(&body).unwrap(),
-                );
-                http.write(&body)?;
-                http.write(&[0u8])?;
-            }
+        if heads_client.content_length != 0 {
+            let body = client.read_body()?;
+            _log.println(
+                LogLevel::Info,
+                TAG,
+                "request body",
+                str::from_utf8(&body).unwrap(),
+            );
+            http.write(&body)?;
+            http.write(&[0u8])?;
         }
 
         let h = http.read_headers()?;
-        let h_s = stringify_headers(&h);
-        let heads = parse_headers(h_s);
-        _log.println(LogLevel::Info, "Send headers to client", heads);
-        client.write(&h).expect("failed send headers");
+        let heads_http = Headers::new(h.clone());
+        _log.println(LogLevel::Info, TAG, "request headers", &heads_http.parsed);
+        client
+            .write(&h)
+            .expect("Failed send headers in handle proxy");
 
         client.tunnel(&mut http, &_log)?;
 

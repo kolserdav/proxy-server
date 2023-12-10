@@ -1,84 +1,16 @@
-use crate::http::CRLF;
 use regex::Regex;
-use std::{fmt, str};
+use std::{
+    io::{Result, Write},
+    net::{TcpListener, TcpStream},
+    str,
+};
+
+use crate::{
+    headers::Headers,
+    http::{Http, Status, CRLF},
+    log::{Log, LogLevel},
+};
 pub mod constants;
-
-/// For change request headers host to host of target
-pub fn change_header_host(heads: &str, target: &str) -> Option<String> {
-    let reg = Regex::new(r"Host: *.*\r\n").unwrap();
-    let capts = reg.captures(heads);
-    if let None = capts {
-        return None;
-    }
-    let capts = capts.unwrap();
-    let old_host = capts.get(0).unwrap().as_str();
-    Some(heads.replace(old_host, format!("Host: {}\r\n", target).as_str()))
-}
-
-#[derive(Debug)]
-pub struct Header {
-    name: String,
-    value: String,
-}
-
-impl fmt::Display for Header {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}: {}", self.name, self.value)
-    }
-}
-
-/// Parse headers
-pub fn parse_headers(heads: String) -> Vec<Header> {
-    let mut res: Vec<Header> = vec![];
-    let heads = heads.split(CRLF);
-    for h in heads {
-        // TODO check it reg
-        let reg_name = Regex::new(r"^.+: ").unwrap();
-        let capts_name = reg_name.captures(h);
-        if let None = capts_name {
-            continue;
-        }
-        let capts_name = capts_name.unwrap();
-        let name = capts_name
-            .get(0)
-            .unwrap()
-            .as_str()
-            .to_string()
-            // FIXME
-            .replace(": ", "");
-
-        let reg_value = Regex::new(r": *.*$").unwrap();
-        let capts_value = reg_value.captures(h);
-        if let None = capts_value {
-            res.push(Header {
-                name,
-                value: "".to_string(),
-            });
-            continue;
-        }
-        let capts_value = capts_value.unwrap();
-        let value = capts_value
-            .get(0)
-            .unwrap()
-            .as_str()
-            .to_string()
-            .replace(": ", "");
-        res.push(Header { name, value });
-    }
-    res
-}
-
-/// Stringify headers
-pub fn stringify_headers(heads: &Vec<u8>) -> String {
-    let s = str::from_utf8(heads);
-    match s {
-        Ok(val) => val.to_string(),
-        Err(err) => {
-            println!("Failed to stringify headers: {:?}", err);
-            "".to_string()
-        }
-    }
-}
 
 /// Set spaces before capitalize letters. For change [`Http::Status`] enum items.
 pub fn space_bef_cap(src: String) -> String {
@@ -102,36 +34,44 @@ pub fn space_bef_cap(src: String) -> String {
     res
 }
 
-/// Parse content length from request headers
-pub fn get_content_length(src: &String) -> Option<usize> {
-    let low = Regex::new(r"(c|C)ontent-(l|L)ength:\s*\d+")
-        .unwrap()
-        .captures(&src);
+pub fn target(addr: &str) -> Result<()> {
+    let listener = TcpListener::bind(addr)?;
+    println!("listening target on {}", addr);
+    for stream in listener.incoming() {
+        handle_target(stream?)?;
+    }
+    Ok(())
+}
 
-    #[allow(unused_assignments)]
-    let mut check: Option<&str> = None;
-    if let Some(v) = low {
-        let low = v.get(0).unwrap();
-        check = Some(low.as_str());
+pub fn handle_target(client: TcpStream) -> Result<()> {
+    const TAG: &str = "Handle target";
+    let _log = Log::new(&super::LOG_LEVEL);
+    let mut client = Http::from(client);
+    _log.println(LogLevel::Info, TAG, "start client", &client);
+
+    let req_heads = client.read_headers()?;
+    let heads = Headers::new(req_heads);
+    _log.println(LogLevel::Info, TAG, "headers", &heads.parsed);
+
+    let res_heads = format!(
+        "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}"
+    );
+
+    client.set_status(Status::OK)?;
+    client.write(res_heads.as_bytes())?;
+    client.set_end_line()?;
+
+    if heads.content_length != 0 {
+        let body = client.read_body()?;
+        _log.println(LogLevel::Info, TAG, "body", str::from_utf8(&body).unwrap());
+        for i in body {
+            let chunk = format!("1{CRLF}{}{CRLF}", str::from_utf8(&[i]).unwrap());
+            client.write(chunk.as_bytes())?;
+        }
     }
 
-    if let None = check {
-        return None;
-    }
-
-    let cont_len = check.unwrap();
-
-    let num = Regex::new(r"\d+").unwrap().captures(cont_len);
-    if let None = num {
-        return None;
-    }
-    let capts = num.unwrap();
-    let num = capts.get(0);
-    let num_str = num.unwrap().as_str();
-    let num = num_str.parse::<usize>();
-    if let Err(e) = num {
-        println!("Failed parse content lenght from str: {}: {}", num_str, e);
-        return None;
-    }
-    Some(num.unwrap())
+    client.set_zero_byte()?;
+    client.flush()?;
+    _log.println(LogLevel::Info, TAG, "end client", client);
+    Ok(())
 }
