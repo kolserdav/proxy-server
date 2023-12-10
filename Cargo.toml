@@ -1,6 +1,6 @@
 [package]
 name = "proxy-server"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2021"
 description = "Low level proxy server"
 authors = ["Sergey Kolmiller <uyem.ru@gmail.com>"]
@@ -29,3 +29,4 @@ chunk_10MB = []
 
 [dependencies]
 regex = "1.7.1"
+serde = { version = "1.0.193", features = [ "derive" ] }

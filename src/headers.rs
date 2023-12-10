@@ -1,8 +1,9 @@
 use crate::http::CRLF;
 use regex::Regex;
+use serde::Serialize;
 use std::{fmt, str};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Header {
     pub name: String,
     pub value: String,
@@ -14,7 +15,7 @@ impl fmt::Display for Header {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct Headers {
     pub content_length: usize,
     pub raw: String,
