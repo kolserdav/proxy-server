@@ -180,7 +180,7 @@ impl Handler {
         http.write(req_client.headers_raw.as_bytes())?;
 
         if req_client.content_length != 0 {
-            let body = client.read_body()?;
+            let body = client.read_body(&req_client)?;
             _log.println(
                 LogLevel::Info,
                 TAG,

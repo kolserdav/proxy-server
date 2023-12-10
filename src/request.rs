@@ -1,17 +1,19 @@
-use crate::{header::Header, http::CRLF};
+use crate::header::Header;
+use napi_derive::napi;
 use regex::Regex;
 use serde::Serialize;
 use std::str;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
+#[napi(object)]
 pub struct Request {
+    pub url: String,
     pub protocol: String,
     pub method: String,
-    pub status: u16,
-    pub status_text: String,
-    pub content_length: usize,
+    pub content_length: u32,
     pub headers_raw: String,
     pub headers: Vec<Header>,
+    pub body: String,
 }
 
 impl Request {
@@ -21,68 +23,31 @@ impl Request {
     }
 
     pub fn from_string(raw: String) -> Self {
-        let mut content_length: usize = 0;
+        let mut content_length: u32 = 0;
         let content_length_op = get_content_length(&raw);
         if let Some(val) = content_length_op {
             content_length = val;
         }
         Request {
+            url: get_url(&raw),
             protocol: get_protocol(&raw),
-            status: get_status(&raw),
-            status_text: get_status_text(&raw),
             method: get_method(&raw),
             content_length,
+            body: "".to_string(),
             headers_raw: raw.clone(),
-            headers: parse(raw),
+            headers: Header::parse(raw),
         }
     }
 
     pub fn change_host(&mut self, target: &str) {
         let raw = change_host(self.headers_raw.clone(), target);
         self.headers_raw = raw.clone();
-        self.headers = parse(raw);
+        self.headers = Header::parse(raw);
     }
-}
 
-/// Parse headers
-fn parse(heads: String) -> Vec<Header> {
-    let mut res: Vec<Header> = vec![];
-    let heads = heads.split(CRLF);
-    for h in heads {
-        // TODO check it reg
-        let reg_name = Regex::new(r"^.+: ").unwrap();
-        let capts_name = reg_name.captures(h);
-        if let None = capts_name {
-            continue;
-        }
-        let capts_name = capts_name.unwrap();
-        let name = capts_name
-            .get(0)
-            .unwrap()
-            .as_str()
-            .to_string()
-            // FIXME
-            .replace(": ", "");
-
-        let reg_value = Regex::new(r": *.*$").unwrap();
-        let capts_value = reg_value.captures(h);
-        if let None = capts_value {
-            res.push(Header {
-                name,
-                value: "".to_string(),
-            });
-            continue;
-        }
-        let capts_value = capts_value.unwrap();
-        let value = capts_value
-            .get(0)
-            .unwrap()
-            .as_str()
-            .to_string()
-            .replace(": ", "");
-        res.push(Header { name, value });
+    pub fn set_body(&mut self, body: String) {
+        self.body = body;
     }
-    res
 }
 
 /// Stringify headers
@@ -110,7 +75,7 @@ fn change_host(heads: String, target: &str) -> String {
 }
 
 /// Parse content length from request headers
-fn get_content_length(src: &String) -> Option<usize> {
+fn get_content_length(src: &String) -> Option<u32> {
     let low = Regex::new(r"(c|C)ontent-(l|L)ength:\s*\d+")
         .unwrap()
         .captures(&src);
@@ -135,7 +100,7 @@ fn get_content_length(src: &String) -> Option<usize> {
     let capts = num.unwrap();
     let num = capts.get(0);
     let num_str = num.unwrap().as_str();
-    let num = num_str.parse::<usize>();
+    let num = num_str.parse::<u32>();
     if let Err(e) = num {
         println!("Failed parse content lenght from str: {}: {}", num_str, e);
         return None;
@@ -154,6 +119,17 @@ fn get_method(raw: &String) -> String {
     method.to_string()
 }
 
+fn get_url(raw: &String) -> String {
+    let reg = Regex::new(r"\/[a-zA-Z0-9_\-\/]*").unwrap();
+    let capts = reg.captures(raw.as_str());
+    if let None = capts {
+        return "/".to_string();
+    }
+    let capts = capts.unwrap();
+    let url = capts.get(0).unwrap().as_str();
+    url.to_string()
+}
+
 fn get_protocol(raw: &String) -> String {
     let reg = Regex::new(r"HTTPS?\/\d+\.\d+").unwrap();
     let capts = reg.captures(raw.as_str());
@@ -165,6 +141,7 @@ fn get_protocol(raw: &String) -> String {
     protocol.to_string()
 }
 
+#[allow(dead_code)]
 fn get_status(raw: &String) -> u16 {
     let reg = Regex::new(r"\d{3}").unwrap();
     let capts = reg.captures(raw.as_str());
@@ -180,6 +157,7 @@ fn get_status(raw: &String) -> u16 {
     status
 }
 
+#[allow(dead_code)]
 fn get_status_text(raw: &String) -> String {
     let reg = Regex::new(r"\d{3}\s+\w+").unwrap();
     let capts = reg.captures(raw.as_str());

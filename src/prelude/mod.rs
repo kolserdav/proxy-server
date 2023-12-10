@@ -62,7 +62,7 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
     client.set_end_line()?;
 
     if req.content_length != 0 {
-        let body = client.read_body()?;
+        let body = client.read_body(&req)?;
         _log.println(LogLevel::Info, TAG, "body", str::from_utf8(&body).unwrap());
         for i in body {
             let chunk = format!("1{CRLF}{}{CRLF}", str::from_utf8(&[i]).unwrap());

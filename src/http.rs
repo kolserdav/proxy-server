@@ -1,5 +1,7 @@
 use regex::Regex;
 
+use crate::request::Request;
+
 use super::log::{Log, LogLevel};
 use super::prelude::constants::*;
 ///! Module [`Http`].
@@ -51,7 +53,8 @@ impl Display for Status {
 
 #[derive(Debug)]
 pub struct Http {
-    socket: TcpStream,
+    pub socket: TcpStream,
+    request: Option<Request>,
 }
 
 impl Http {
@@ -63,7 +66,15 @@ impl Http {
 
     /// Create [`Http`] from exists socket
     pub fn from(socket: TcpStream) -> Http {
-        Http { socket }
+        Http {
+            socket,
+            request: None,
+        }
+    }
+
+    /// Set [`Request`] body
+    pub fn set_request(&mut self, req: Request) {
+        self.request = Some(req);
     }
 
     /// Write HTTP status to response
@@ -90,8 +101,11 @@ impl Http {
     }
 
     /// Read request body
-    pub fn read_body(&mut self) -> Result<Vec<u8>> {
+    pub fn read_body(&mut self, req: &Request) -> Result<Vec<u8>> {
         let mut buf: Vec<u8> = vec![];
+        if req.method.to_uppercase() == "GET" {
+            return Ok(vec![]);
+        }
         loop {
             let mut chunk = [0; super::CHUNK_SIZE];
             self.read(&mut chunk)?;

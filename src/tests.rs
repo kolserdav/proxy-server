@@ -49,7 +49,7 @@ pub fn test_proxy_server() -> Result<()> {
     let req = Request::new(buff);
     _log.println(LogLevel::Info, TAG, "request", &req);
 
-    let b = http.read_body()?;
+    let b = http.read_body(&req)?;
     let rec_body = http.body_to_string(b)?;
     _log.println(LogLevel::Info, TAG, "body: ", &rec_body);
 
