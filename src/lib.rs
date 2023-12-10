@@ -59,8 +59,8 @@ use thread_pool::ThreadPool;
 pub mod http;
 use http::{Http, Status};
 pub mod headers;
-use headers::Headers;
 pub mod log;
+pub mod request;
 use log::{Log, LogLevel, LOG_LEVEL};
 pub mod prelude;
 use prelude::constants::*;
@@ -158,11 +158,13 @@ impl Handler {
 
         let mut client = Http::from(client);
 
-        let head_client_buf = client.read_headers()?;
-        let mut heads_client = Headers::new(head_client_buf);
-
-        _log.println(LogLevel::Info, TAG, "client headers", &heads_client.parsed);
-        heads_client = heads_client.change_host(&self.config.target);
+        _log.println(
+            LogLevel::Info,
+            TAG,
+            "client headers",
+            &client.request.headers.parsed,
+        );
+        client.request.headers.change_host(&self.config.target);
 
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
@@ -176,9 +178,9 @@ impl Handler {
         }
         let mut http = http?;
 
-        http.write(heads_client.raw.as_bytes())?;
+        http.write(client.request.headers.raw.as_bytes())?;
 
-        if heads_client.content_length != 0 {
+        if client.request.content_length != 0 {
             let body = client.read_body()?;
             _log.println(
                 LogLevel::Info,
@@ -190,11 +192,14 @@ impl Handler {
             http.write(&[0u8])?;
         }
 
-        let h = http.read_headers()?;
-        let heads_http = Headers::new(h.clone());
-        _log.println(LogLevel::Info, TAG, "request headers", &heads_http.parsed);
+        _log.println(
+            LogLevel::Info,
+            TAG,
+            "request headers",
+            &http.request.headers.parsed,
+        );
         client
-            .write(&h)
+            .write(&http.request.headers.buffer)
             .expect("Failed send headers in handle proxy");
 
         client.tunnel(&mut http, &_log)?;

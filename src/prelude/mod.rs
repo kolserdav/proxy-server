@@ -61,7 +61,7 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
     client.write(res_heads.as_bytes())?;
     client.set_end_line()?;
 
-    if heads.content_length != 0 {
+    if client.request.content_length != 0 {
         let body = client.read_body()?;
         _log.println(LogLevel::Info, TAG, "body", str::from_utf8(&body).unwrap());
         for i in body {

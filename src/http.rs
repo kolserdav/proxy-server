@@ -1,14 +1,18 @@
 use regex::Regex;
 
+use crate::request::Request;
+
 use super::log::{Log, LogLevel};
 use super::prelude::constants::*;
 ///! Module [`Http`].
 ///! The minimum set of methods to work through [`TcpStream`].
 use super::prelude::*;
+use std::clone;
+use std::io::Error;
 use std::{
     fmt,
     fmt::{Display, Formatter},
-    io::{Error, ErrorKind, Read, Result, Write},
+    io::{ErrorKind, Read, Result, Write},
     net::TcpStream,
     str,
 };
@@ -51,22 +55,40 @@ impl Display for Status {
 
 #[derive(Debug)]
 pub struct Http {
+    pub request: Request,
     socket: TcpStream,
 }
 
 impl Http {
     /// Create [`Http`] with new TCP connection
     pub fn connect(address: &str) -> Result<Http> {
-        let socket = TcpStream::connect(address)?;
-        Ok(Http::from(socket))
+        let socket = TcpStream::connect(address);
+        if let Err(err) = socket {
+            println!("Failed connect to '{}': {:?}", address, err);
+            return Err(Error::new(ErrorKind::NotConnected, err));
+        }
+        let socket = socket.unwrap();
+
+        let mut http = Http::from(socket);
+        http.request = http.get_request();
+
+        Ok(http)
     }
 
     /// Create [`Http`] from exists socket
     pub fn from(socket: TcpStream) -> Http {
-        Http { socket }
+        Http {
+            socket,
+            request: Request::new(),
+        }
     }
 
-    /// Write HTTP status to response
+    /// Set  [`Http`] request
+    pub fn get_request(&mut self) -> Request {
+        self.request.clone().get(self)
+    }
+
+    /// Write  [`Http`] status to response
     pub fn set_status(&mut self, status: Status) -> Result<usize> {
         self.write(format!("{} {}{}{}", VERSION, status.code(), status, CRLF).as_bytes())
     }

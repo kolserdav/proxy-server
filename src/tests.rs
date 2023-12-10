@@ -59,7 +59,7 @@ pub fn test_proxy_server() -> Result<()> {
 
 #[test]
 fn test_change_header_host() {
-    let heads = Headers::from_string(format!("Host: {}{CRLF}", super::PROXY_ADDRESS));
-    let heads = heads.change_host(super::TARGET_ADDRESS);
+    let mut heads = Headers::from_string(format!("Host: {}{CRLF}", super::PROXY_ADDRESS));
+    heads.change_host(super::TARGET_ADDRESS);
     assert_eq!(heads.raw, format!("Host: {}{CRLF}", super::TARGET_ADDRESS));
 }
