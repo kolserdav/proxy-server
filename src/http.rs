@@ -1,3 +1,5 @@
+use regex::Regex;
+
 use super::log::{Log, LogLevel};
 use super::prelude::constants::*;
 ///! Module [`Http`].
@@ -6,7 +8,7 @@ use super::prelude::*;
 use std::{
     fmt,
     fmt::{Display, Formatter},
-    io::{ErrorKind, Read, Result, Write},
+    io::{Error, ErrorKind, Read, Result, Write},
     net::TcpStream,
     str,
 };
@@ -15,6 +17,8 @@ use std::{
 pub const CRLF: &str = "\r\n";
 /// Version of HTTP protocol ([`HTTP/1.1`])
 pub const VERSION: &str = "HTTP/1.1";
+
+const TAG: &str = "Http";
 
 /// HTTP statuses enum
 #[derive(Debug)]
@@ -106,6 +110,21 @@ impl Http {
         Ok(buf)
     }
 
+    /// Body to string
+    pub fn body_to_string(&mut self, body: Vec<u8>) -> Result<String> {
+        let res = str::from_utf8(&body);
+        if let Err(err) = res {
+            println!("{}", err);
+            return Err(Error::new(
+                ErrorKind::InvalidData,
+                "Failed to parse body to string",
+            ));
+        }
+        let result = res.unwrap();
+        let rec = Regex::new(r"\d*\r\n(0$)?").unwrap().replace_all(result, "");
+        Ok(rec.to_string())
+    }
+
     /// Client - Target tunnel core
     pub fn tunnel(&mut self, http: &mut Self, _log: &Log) -> Result<usize> {
         let mut size: usize = 0;
@@ -117,7 +136,7 @@ impl Http {
                     ErrorKind::ConnectionReset => LogLevel::Info,
                     _ => LogLevel::Error,
                 };
-                _log.println(log_l, "Failed read chunk", e);
+                _log.println(log_l, TAG, "Failed read chunk", e);
             }
             let mut buf = vec![];
             b.map(|_b| {

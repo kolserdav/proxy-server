@@ -1,5 +1,15 @@
 use regex::Regex;
-use std::str;
+use std::{
+    io::{Result, Write},
+    net::{TcpListener, TcpStream},
+    str,
+};
+
+use crate::{
+    headers::Headers,
+    http::{Http, Status, CRLF},
+    log::{Log, LogLevel},
+};
 pub mod constants;
 
 /// Set spaces before capitalize letters. For change [`Http::Status`] enum items.
@@ -22,4 +32,46 @@ pub fn space_bef_cap(src: String) -> String {
         res.push(v);
     }
     res
+}
+
+pub fn target(addr: &str) -> Result<()> {
+    let listener = TcpListener::bind(addr)?;
+    println!("listening target on {}", addr);
+    for stream in listener.incoming() {
+        handle_target(stream?)?;
+    }
+    Ok(())
+}
+
+pub fn handle_target(client: TcpStream) -> Result<()> {
+    const TAG: &str = "Handle target";
+    let _log = Log::new(&super::LOG_LEVEL);
+    let mut client = Http::from(client);
+    _log.println(LogLevel::Info, TAG, "start client", &client);
+
+    let req_heads = client.read_headers()?;
+    let heads = Headers::new(req_heads);
+    _log.println(LogLevel::Info, TAG, "headers", &heads.parsed);
+
+    let res_heads = format!(
+        "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}"
+    );
+
+    client.set_status(Status::OK)?;
+    client.write(res_heads.as_bytes())?;
+    client.set_end_line()?;
+
+    if heads.content_length != 0 {
+        let body = client.read_body()?;
+        _log.println(LogLevel::Info, TAG, "body", str::from_utf8(&body).unwrap());
+        for i in body {
+            let chunk = format!("1{CRLF}{}{CRLF}", str::from_utf8(&[i]).unwrap());
+            client.write(chunk.as_bytes())?;
+        }
+    }
+
+    client.set_zero_byte()?;
+    client.flush()?;
+    _log.println(LogLevel::Info, TAG, "end client", client);
+    Ok(())
 }

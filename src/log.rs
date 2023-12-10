@@ -29,13 +29,13 @@ impl<'a> Log<'a> {
         Log { level }
     }
 
-    pub fn println<T, K>(&self, level: LogLevel, msg: K, arg: T)
+    pub fn println<T, K>(&self, level: LogLevel, tag: &str, msg: K, arg: T)
     where
         T: std::fmt::Debug,
         K: std::fmt::Display,
     {
         if self.level.as_num() <= level.as_num() {
-            println!("[ {:?} ] {}: {:?}", level, msg, arg);
+            println!("[ {:?} ] <{}> {}: {:?}", level, tag, msg, arg);
         }
     }
 }
