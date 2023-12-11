@@ -1,4 +1,4 @@
-pub mod header;
+pub mod headers;
 pub mod request;
 pub mod status;
 use self::request::Request;
@@ -25,7 +25,6 @@ const TAG: &str = "Http";
 #[derive(Debug)]
 pub struct Http {
     pub socket: TcpStream,
-    request: Option<Request>,
 }
 
 impl Http {
@@ -37,21 +36,13 @@ impl Http {
 
     /// Create [`Http`] from exists socket
     pub fn from(socket: TcpStream) -> Http {
-        Http {
-            socket,
-            request: None,
-        }
-    }
-
-    /// Set [`Request`] body
-    pub fn set_request(&mut self, req: Request) {
-        self.request = Some(req);
+        Http { socket }
     }
 
     /// Write HTTP status to response
     pub fn set_status(&mut self, code: u16) -> Result<usize> {
         let status = Status::new(code);
-        self.write(format!("{} {} {} {}", VERSION, status.code, status.name, CRLF).as_bytes())
+        self.write(format!("{} {} {}{}", VERSION, status.code, status.name, CRLF).as_bytes())
     }
 
     /// Write content length header

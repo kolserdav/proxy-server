@@ -160,7 +160,7 @@ impl Handler {
         let mut client = Http::from(client);
 
         let head_client_buf = client.read_headers()?;
-        let mut req_client = Request::new(head_client_buf);
+        let mut req_client = Request::new(head_client_buf)?;
 
         _log.println(LogLevel::Info, TAG, "client request", &req_client);
         req_client.change_host(&self.config.target);
@@ -177,7 +177,7 @@ impl Handler {
         }
         let mut http = http?;
 
-        http.write(req_client.headers_raw.as_bytes())?;
+        http.write(req_client.headers.raw.as_bytes())?;
 
         if req_client.content_length != 0 {
             let body = client.read_body(&req_client)?;

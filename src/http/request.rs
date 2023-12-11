@@ -1,10 +1,10 @@
 ///! Module [`Request`]
-use crate::http::header::Header;
+use crate::http::headers::Headers;
 #[allow(unused_imports)]
 use napi_derive::napi;
 use regex::Regex;
 use serde::Serialize;
-use std::str;
+use std::{io::Result, str};
 
 /// HTTP request
 #[cfg_attr(feature = "napi", napi(object))]
@@ -14,134 +14,40 @@ pub struct Request {
     pub protocol: String,
     pub method: String,
     pub content_length: u32,
-    pub headers_raw: String,
-    pub headers: Vec<Header>,
+    pub headers: Headers,
     pub body: String,
 }
 
 impl Request {
-    pub fn new(buffer: Vec<u8>) -> Self {
-        let raw = stringify(&buffer);
-        Request::from_string(raw)
+    pub fn new(buffer: Vec<u8>) -> Result<Self> {
+        let headers = Headers::from_bytes(&buffer)?;
+        Ok(Request::create(headers))
     }
 
-    pub fn from_string(raw: String) -> Self {
+    pub fn create(headers: Headers) -> Self {
         let mut content_length: u32 = 0;
-        let content_length_op = get_content_length(&raw);
+        let content_length_op = Headers::get_content_length(&headers.raw);
         if let Some(val) = content_length_op {
             content_length = val;
         }
         Request {
-            url: get_url(&raw),
-            protocol: get_protocol(&raw),
-            method: get_method(&raw),
+            url: Headers::get_url(&headers.raw),
+            protocol: Headers::get_protocol(&headers.raw),
+            method: Headers::get_method(&headers.raw),
             content_length,
             body: "".to_string(),
-            headers_raw: raw.clone(),
-            headers: Header::parse(raw),
+            headers,
         }
     }
 
     pub fn change_host(&mut self, target: &str) {
-        let raw = change_host(self.headers_raw.clone(), target);
-        self.headers_raw = raw.clone();
-        self.headers = Header::parse(raw);
+        let raw = Headers::change_host(self.headers.raw.clone(), target);
+        self.headers = Headers::from_string(raw);
     }
 
     pub fn set_body(&mut self, body: String) {
         self.body = body;
     }
-}
-
-/// Stringify headers
-fn stringify(heads: &Vec<u8>) -> String {
-    let s = str::from_utf8(heads);
-    match s {
-        Ok(val) => val.to_string(),
-        Err(err) => {
-            println!("Failed to stringify headers: {:?}", err);
-            "".to_string()
-        }
-    }
-}
-
-/// For change request headers host to host of target
-fn change_host(heads: String, target: &str) -> String {
-    let reg = Regex::new(r"Host: *.*\r\n").unwrap();
-    let capts = reg.captures(heads.as_str());
-    if let None = capts {
-        return heads;
-    }
-    let capts = capts.unwrap();
-    let old_host = capts.get(0).unwrap().as_str();
-    heads.replace(old_host, format!("Host: {}\r\n", target).as_str())
-}
-
-/// Parse content length from request headers
-fn get_content_length(src: &String) -> Option<u32> {
-    let low = Regex::new(r"(c|C)ontent-(l|L)ength:\s*\d+")
-        .unwrap()
-        .captures(&src);
-
-    #[allow(unused_assignments)]
-    let mut check: Option<&str> = None;
-    if let Some(v) = low {
-        let low = v.get(0).unwrap();
-        check = Some(low.as_str());
-    }
-
-    if let None = check {
-        return None;
-    }
-
-    let cont_len = check.unwrap();
-
-    let num = Regex::new(r"\d+").unwrap().captures(cont_len);
-    if let None = num {
-        return None;
-    }
-    let capts = num.unwrap();
-    let num = capts.get(0);
-    let num_str = num.unwrap().as_str();
-    let num = num_str.parse::<u32>();
-    if let Err(e) = num {
-        println!("Failed parse content lenght from str: {}: {}", num_str, e);
-        return None;
-    }
-    Some(num.unwrap())
-}
-
-fn get_method(raw: &String) -> String {
-    let reg = Regex::new(r"\w+").unwrap();
-    let capts = reg.captures(raw.as_str());
-    if let None = capts {
-        return "OPTIONS".to_string();
-    }
-    let capts = capts.unwrap();
-    let method = capts.get(0).unwrap().as_str();
-    method.to_string()
-}
-
-fn get_url(raw: &String) -> String {
-    let reg = Regex::new(r"\/[a-zA-Z0-9_\-\/]*").unwrap();
-    let capts = reg.captures(raw.as_str());
-    if let None = capts {
-        return "/".to_string();
-    }
-    let capts = capts.unwrap();
-    let url = capts.get(0).unwrap().as_str();
-    url.to_string()
-}
-
-fn get_protocol(raw: &String) -> String {
-    let reg = Regex::new(r"HTTPS?\/\d+\.\d+").unwrap();
-    let capts = reg.captures(raw.as_str());
-    if let None = capts {
-        return "OPTIONS".to_string();
-    }
-    let capts = capts.unwrap();
-    let protocol = capts.get(0).unwrap().as_str();
-    protocol.to_string()
 }
 
 #[allow(dead_code)]

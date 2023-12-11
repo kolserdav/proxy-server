@@ -49,7 +49,7 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
     _log.println(LogLevel::Info, TAG, "start client", &client);
 
     let req_heads = client.read_headers()?;
-    let req = Request::new(req_heads);
+    let req = Request::new(req_heads)?;
     _log.println(LogLevel::Info, TAG, "headers", &req.headers);
 
     let res_heads = format!(

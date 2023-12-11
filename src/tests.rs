@@ -1,4 +1,4 @@
-use crate::http::request::Request;
+use crate::http::{headers::Headers, request::Request};
 use crate::prelude::target;
 
 #[cfg(test)]
@@ -47,7 +47,7 @@ pub fn test_proxy_server() -> Result<()> {
     http.write(&[0u8])?;
 
     let buff = http.read_headers()?;
-    let req = Request::new(buff);
+    let req = Request::new(buff)?;
     _log.println(LogLevel::Info, TAG, "request", &req);
 
     let b = http.read_body(&req)?;
@@ -59,11 +59,13 @@ pub fn test_proxy_server() -> Result<()> {
 }
 
 #[test]
-fn test_change_header_host() {
-    let mut req = Request::from_string(format!("Host: {}{CRLF}", super::PROXY_ADDRESS));
+fn test_change_header_host() -> Result<()> {
+    let headers = Headers::from_string(format!("Host: {}{CRLF}", super::PROXY_ADDRESS));
+    let mut req = Request::create(headers);
     req.change_host(super::TARGET_ADDRESS);
     assert_eq!(
-        req.headers_raw,
+        req.headers.raw,
         format!("Host: {}{CRLF}", super::TARGET_ADDRESS)
     );
+    Ok(())
 }
