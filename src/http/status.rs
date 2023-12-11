@@ -1,9 +1,11 @@
+///! Module [`Status`]
 use std::{
     fmt,
     fmt::{Display, Formatter},
     str,
 };
 
+/// HTTP status
 #[derive(Debug)]
 pub struct Status {
     pub name: &'static str,

@@ -1,3 +1,4 @@
+///! Module [`Request`]
 use crate::http::header::Header;
 #[allow(unused_imports)]
 use napi_derive::napi;
@@ -5,6 +6,7 @@ use regex::Regex;
 use serde::Serialize;
 use std::str;
 
+/// HTTP request
 #[cfg_attr(feature = "napi", napi(object))]
 #[derive(Debug, Serialize, Clone)]
 pub struct Request {

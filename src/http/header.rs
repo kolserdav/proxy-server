@@ -1,3 +1,4 @@
+///! Module [`Header`]
 use crate::http::CRLF;
 #[allow(unused_imports)]
 use napi_derive::napi;
