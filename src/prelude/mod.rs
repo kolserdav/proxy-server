@@ -6,7 +6,10 @@ use std::{
 };
 
 use crate::{
-    http::{request::Request, Http, CRLF},
+    http::{
+        request::{Request, Socket},
+        Http, CRLF,
+    },
     log::{Log, LogLevel},
 };
 pub mod constants;
@@ -49,7 +52,22 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
     _log.println(LogLevel::Info, TAG, "start client", &client);
 
     let req_heads = client.read_headers()?;
-    let req = Request::new(req_heads)?;
+
+    let error = client.socket.take_error().unwrap();
+    let error = match error {
+        None => "".to_string(),
+        Some(val) => val.to_string(),
+    };
+
+    let req = Request::new(
+        Socket {
+            host: client.socket.local_addr().unwrap().to_string(),
+            peer_addr: client.socket.peer_addr().unwrap().to_string(),
+            ttl: client.socket.ttl().unwrap(),
+            error,
+        },
+        req_heads,
+    )?;
     _log.println(LogLevel::Info, TAG, "headers", &req.headers);
 
     let res_heads = format!(

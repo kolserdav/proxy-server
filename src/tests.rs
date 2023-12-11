@@ -1,6 +1,7 @@
 use crate::http::headers::Header;
+use crate::http::request::Socket;
 use crate::http::{headers::Headers, request::Request};
-use crate::prelude::constants::HTTP_VERSION_DEFAULT;
+use crate::prelude::constants::{HTTP_VERSION_DEFAULT, TTL_DEFAULT};
 use crate::prelude::target;
 
 #[cfg(test)]
@@ -49,7 +50,15 @@ pub fn test_proxy_server() -> Result<()> {
     http.write(&[0u8])?;
 
     let buff = http.read_headers()?;
-    let req = Request::new(buff)?;
+    let req = Request::new(
+        Socket {
+            host: server.address.to_string(),
+            peer_addr: server.address.to_string(),
+            ttl: TTL_DEFAULT,
+            error: "".to_string(),
+        },
+        buff,
+    )?;
     _log.println(LogLevel::Info, TAG, "request", &req);
 
     let b = http.read_body(&req)?;
@@ -69,7 +78,15 @@ fn test_change_header_host() -> Result<()> {
             value: super::PROXY_ADDRESS.to_string(),
         }],
     );
-    let mut req = Request::create(headers);
+    let mut req = Request::create(
+        Socket {
+            host: super::PROXY_ADDRESS.to_string(),
+            peer_addr: super::PROXY_ADDRESS.to_string(),
+            ttl: TTL_DEFAULT,
+            error: "".to_string()
+        },
+        headers,
+    );
     req.change_host(super::TARGET_ADDRESS)?;
 
     assert_eq!(

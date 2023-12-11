@@ -64,7 +64,7 @@ use log::{Log, LogLevel, LOG_LEVEL};
 pub mod prelude;
 use prelude::constants::*;
 
-use crate::http::request::Request;
+use crate::http::request::{Request, Socket};
 
 #[cfg(test)]
 mod tests;
@@ -167,7 +167,22 @@ impl Handler {
         let mut client = Http::from(client);
 
         let head_client_buf = client.read_headers()?;
-        let mut req_client = Request::new(head_client_buf)?;
+
+        let error = client.socket.take_error().unwrap();
+        let error = match error {
+            None => "".to_string(),
+            Some(val) => val.to_string(),
+        };
+
+        let mut req_client = Request::new(
+            Socket {
+                host: client.socket.local_addr().unwrap().to_string(),
+                peer_addr: client.socket.peer_addr().unwrap().to_string(),
+                ttl: client.socket.ttl().unwrap(),
+                error,
+            },
+            head_client_buf,
+        )?;
 
         _log.println(LogLevel::Info, TAG, "client request", &req_client);
         req_client.change_host(&self.config.target)?;
@@ -199,7 +214,22 @@ impl Handler {
         }
 
         let h = http.read_headers()?;
-        let req_http = Request::new(h.clone());
+
+        let error = client.socket.take_error().unwrap();
+        let error = match error {
+            None => "".to_string(),
+            Some(val) => val.to_string(),
+        };
+
+        let req_http = Request::new(
+            Socket {
+                host: client.socket.local_addr().unwrap().to_string(),
+                peer_addr: client.socket.peer_addr().unwrap().to_string(),
+                ttl: client.socket.ttl().unwrap(),
+                error,
+            },
+            h.clone(),
+        );
         _log.println(LogLevel::Info, TAG, "target response", &req_http);
         client
             .write(&h)

@@ -14,31 +14,54 @@ use std::{
 #[derive(Debug, Serialize, Clone)]
 pub struct Request {
     pub url: String,
+    pub host: String,
+    pub peer_addr: String,
     pub protocol: String,
     pub method: String,
     pub content_length: u32,
+    pub ttl: u32,
     pub headers: Headers,
     pub body: String,
+    pub error: String,
+}
+
+pub struct Socket {
+    pub host: String,
+    pub peer_addr: String,
+    pub ttl: u32,
+    pub error: String,
 }
 
 impl Request {
-    pub fn new(buffer: Vec<u8>) -> Result<Self> {
+    pub fn new(socket: Socket, buffer: Vec<u8>) -> Result<Self> {
         let headers = Headers::from_bytes(&buffer)?;
-        Ok(Request::create(headers))
+        Ok(Request::create(socket, headers))
     }
 
-    pub fn create(headers: Headers) -> Self {
+    pub fn create(
+        Socket {
+            host,
+            peer_addr,
+            ttl,
+            error,
+        }: Socket,
+        headers: Headers,
+    ) -> Self {
         let mut content_length: u32 = 0;
         let content_length_op = Headers::get_content_length(&headers.raw);
         if let Some(val) = content_length_op {
             content_length = val;
         }
         Request {
+            host,
+            peer_addr,
             url: Headers::get_url(&headers.raw),
             protocol: Headers::get_protocol(&headers.raw),
             method: Headers::get_method(&headers.raw),
             content_length,
+            ttl,
             body: "".to_string(),
+            error,
             headers,
         }
     }
@@ -52,7 +75,10 @@ impl Request {
             ));
         }
         let heads = heads.unwrap();
+
         self.headers = heads;
+        self.host = target.to_string();
+
         Ok(())
     }
 
