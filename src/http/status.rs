@@ -262,7 +262,7 @@ pub const STATUSES: [Status; 61] = [
 ];
 
 impl Status {
-    /// Get code value of HTTP status
+    /// Create HTTP status from code
     pub fn new(code: u16) -> Status {
         let mut status = Status {
             name: "Not Implemented",
