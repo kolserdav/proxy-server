@@ -1,4 +1,5 @@
-use crate::{prelude::target, request::Request};
+use crate::http::request::Request;
+use crate::prelude::target;
 
 #[cfg(test)]
 use super::{

@@ -1,6 +1,6 @@
 [package]
 name = "proxy-server"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 description = "Low level proxy server"
 authors = ["Sergey Kolmiller <uyem.ru@gmail.com>"]
@@ -24,6 +24,7 @@ chunk_50KB = []
 chunk_100KB = []
 chunk_500KB = []
 chunk_1MB = []
+napi = []
 
 [dependencies]
 napi = "2.14.1"

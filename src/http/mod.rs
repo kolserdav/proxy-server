@@ -1,15 +1,15 @@
-use regex::Regex;
-
-use crate::request::Request;
+pub mod header;
+pub mod request;
+pub mod status;
+use self::request::Request;
+use status::Status;
 
 use super::log::{Log, LogLevel};
 use super::prelude::constants::*;
 ///! Module [`Http`].
 ///! The minimum set of methods to work through [`TcpStream`].
-use super::prelude::*;
+use regex::Regex;
 use std::{
-    fmt,
-    fmt::{Display, Formatter},
     io::{Error, ErrorKind, Read, Result, Write},
     net::TcpStream,
     str,
@@ -21,35 +21,6 @@ pub const CRLF: &str = "\r\n";
 pub const VERSION: &str = "HTTP/1.1";
 
 const TAG: &str = "Http";
-
-/// HTTP statuses enum
-#[derive(Debug)]
-pub enum Status {
-    #[allow(dead_code)]
-    OK,
-    BadRequest,
-    BadGateway,
-}
-
-impl Status {
-    /// Get code value of HTTP status
-    fn code(&self) -> u16 {
-        use Status::*;
-        match self {
-            OK => 200,
-            BadRequest => 400,
-            BadGateway => 502,
-        }
-    }
-}
-
-impl Display for Status {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        let self_str = format!("{:?}", self);
-        let res = space_bef_cap(self_str);
-        write!(f, "{}", res)
-    }
-}
 
 #[derive(Debug)]
 pub struct Http {
@@ -78,8 +49,9 @@ impl Http {
     }
 
     /// Write HTTP status to response
-    pub fn set_status(&mut self, status: Status) -> Result<usize> {
-        self.write(format!("{} {}{}{}", VERSION, status.code(), status, CRLF).as_bytes())
+    pub fn set_status(&mut self, code: u16) -> Result<usize> {
+        let status = Status::new(code);
+        self.write(format!("{} {}{}{}", VERSION, status.code, status.name, CRLF).as_bytes())
     }
 
     /// Write content length header

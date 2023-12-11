@@ -57,14 +57,14 @@ use std::{
 mod thread_pool;
 use thread_pool::ThreadPool;
 pub mod http;
-use http::{Http, Status};
-pub mod request;
-use request::Request;
-pub mod header;
+use http::{status::Status, Http};
+
 pub mod log;
 use log::{Log, LogLevel, LOG_LEVEL};
 pub mod prelude;
 use prelude::constants::*;
+
+use crate::http::request::Request;
 
 #[cfg(test)]
 mod tests;
@@ -168,7 +168,7 @@ impl Handler {
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
             _log.println(LogLevel::Warn, TAG, "Failed proxy", e);
-            client.set_status(Status::BadGateway)?;
+            client.set_status(502)?;
             client.set_content_length(0)?;
             client.set_end_line()?;
             client.flush()?;

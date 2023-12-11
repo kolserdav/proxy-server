@@ -1,12 +1,12 @@
+use crate::http::CRLF;
+#[cfg(napi)]
 use napi_derive::napi;
 use regex::Regex;
 use serde::Serialize;
 use std::fmt;
 
-use crate::http::CRLF;
-
 #[derive(Debug, Serialize, Clone)]
-#[napi(object)]
+#[cfg_attr(feature = "napi", napi(object))]
 pub struct Header {
     pub name: String,
     pub value: String,

@@ -6,9 +6,8 @@ use std::{
 };
 
 use crate::{
-    http::{Http, Status, CRLF},
+    http::{request::Request, status::Status, Http, CRLF},
     log::{Log, LogLevel},
-    request::Request,
 };
 pub mod constants;
 
@@ -57,7 +56,7 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
         "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}"
     );
 
-    client.set_status(Status::OK)?;
+    client.set_status(200)?;
     client.write(res_heads.as_bytes())?;
     client.set_end_line()?;
 

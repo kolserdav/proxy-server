@@ -1,11 +1,12 @@
-use crate::header::Header;
+use crate::http::header::Header;
+#[cfg(napi)]
 use napi_derive::napi;
 use regex::Regex;
 use serde::Serialize;
 use std::str;
 
 #[derive(Debug, Serialize, Clone)]
-#[napi(object)]
+#[cfg_attr(feature = "napi", napi(object))]
 pub struct Request {
     pub url: String,
     pub protocol: String,
@@ -159,7 +160,7 @@ fn get_status(raw: &String) -> u16 {
 
 #[allow(dead_code)]
 fn get_status_text(raw: &String) -> String {
-    let reg = Regex::new(r"\d{3}\s+\w+").unwrap();
+    let reg = Regex::new(r"\d{3}[ \w\-]+").unwrap();
     let capts = reg.captures(raw.as_str());
     let mut status_text: String = "Internal Server Error".to_string();
     if let None = capts {
@@ -167,7 +168,15 @@ fn get_status_text(raw: &String) -> String {
     }
     let capts = capts.unwrap();
     status_text = capts.get(0).unwrap().as_str().to_string();
-    Regex::new(r"^\d{3}\s+")
+    status_text = Regex::new(r"^\d{3}\s+")
+        .unwrap()
+        .replace_all(&status_text, "")
+        .to_string();
+    status_text = Regex::new(r"^\s+")
+        .unwrap()
+        .replace_all(&status_text, "")
+        .to_string();
+    Regex::new(r"\s+$")
         .unwrap()
         .replace_all(&status_text, "")
         .to_string()
