@@ -1,15 +1,11 @@
 use crate::http::header::Header;
-#[cfg(napi)]
+#[allow(unused_imports)]
 use napi_derive::napi;
 use regex::Regex;
 use serde::Serialize;
 use std::str;
 
-cfg_if::cfg_if! {
-    if #[cfg(napi)] {
-        #[napi(object)]
-    }
-}
+#[cfg_attr(feature = "napi", napi(object))]
 #[derive(Debug, Serialize, Clone)]
 pub struct Request {
     pub url: String,

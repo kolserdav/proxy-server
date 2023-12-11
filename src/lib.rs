@@ -57,7 +57,7 @@ use std::{
 mod thread_pool;
 use thread_pool::ThreadPool;
 pub mod http;
-use http::{status::Status, Http};
+use http::Http;
 
 pub mod log;
 use log::{Log, LogLevel, LOG_LEVEL};

@@ -6,7 +6,7 @@ use std::{
 };
 
 use crate::{
-    http::{request::Request, status::Status, Http, CRLF},
+    http::{request::Request, Http, CRLF},
     log::{Log, LogLevel},
 };
 pub mod constants;

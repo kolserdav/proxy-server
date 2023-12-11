@@ -1,6 +1,7 @@
 use proxy_server::{log::LogLevel, prelude::target, Builder, ChangeTarget};
 use std::thread::spawn;
 
+#[allow(dead_code)]
 fn get_dynamic_target(old: &'static str) -> &'static str {
     let target1 = "127.0.0.1:3001";
     let target2 = "127.0.0.1:3003";
