@@ -51,7 +51,7 @@ impl Http {
     /// Write HTTP status to response
     pub fn set_status(&mut self, code: u16) -> Result<usize> {
         let status = Status::new(code);
-        self.write(format!("{} {}{}{}", VERSION, status.code, status.name, CRLF).as_bytes())
+        self.write(format!("{} {} {} {}", VERSION, status.code, status.name, CRLF).as_bytes())
     }
 
     /// Write content length header
