@@ -4,7 +4,10 @@ use crate::http::headers::Headers;
 use napi_derive::napi;
 use regex::Regex;
 use serde::Serialize;
-use std::{io::Result, str};
+use std::{
+    io::{Error, ErrorKind, Result},
+    str,
+};
 
 /// HTTP request
 #[cfg_attr(feature = "napi", napi(object))]
@@ -40,9 +43,17 @@ impl Request {
         }
     }
 
-    pub fn change_host(&mut self, target: &str) {
-        let raw = Headers::change_host(self.headers.raw.clone(), target);
-        self.headers = Headers::from_string(raw);
+    pub fn change_host(&mut self, target: &str) -> Result<()> {
+        let heads = self.headers.change_header("host", target);
+        if let None = heads {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Header host is missing",
+            ));
+        }
+        let heads = heads.unwrap();
+        self.headers = heads;
+        Ok(())
     }
 
     pub fn set_body(&mut self, body: String) {

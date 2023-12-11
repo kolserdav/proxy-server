@@ -42,3 +42,6 @@ pub const THREADS: usize = 4;
 
 /// Proxy server listen address
 pub const PROXY_ADDRESS: &str = "127.0.0.1:3000";
+
+/// Default HTTP version
+pub const HTTP_VERSION_DEFAULT: &str = "HTTP/1.1";

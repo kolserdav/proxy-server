@@ -134,8 +134,15 @@ impl Builder {
             }
             let cl = Handler::new(self);
             pool.execute(|| {
-                cl.handle_proxy(stream.expect("Error in incoming stream"))
-                    .expect("Failed handle proxy");
+                if let Err(err) = stream {
+                    println!("Error in incoming stream {:?}", err);
+                    return;
+                }
+                let stream = stream.unwrap();
+                let res = cl.handle_proxy(stream);
+                if let Err(err) = res {
+                    println!("Error in handle proxy {:?}", err);
+                }
             });
         }
         Err(Error::new(ErrorKind::Interrupted, "main thread crashed"))
@@ -163,7 +170,7 @@ impl Handler {
         let mut req_client = Request::new(head_client_buf)?;
 
         _log.println(LogLevel::Info, TAG, "client request", &req_client);
-        req_client.change_host(&self.config.target);
+        req_client.change_host(&self.config.target)?;
 
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {

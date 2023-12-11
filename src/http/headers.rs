@@ -31,11 +31,20 @@ impl fmt::Display for Header {
 }
 
 impl Headers {
+    pub fn new(prefix: &str, list: Vec<Header>) -> Self {
+        let postfix = Headers::to_string(list);
+        let raw = format!(
+            "{}{CRLF}{postfix}",
+            Regex::new(r"\s*$")
+                .unwrap()
+                .replace_all(prefix, "")
+                .to_string()
+        );
+        Headers::from_string(raw)
+    }
+
     /// Parse headers
     pub fn from_string(raw: String) -> Self {
-        let d = Headers::get_headers_prefix(&raw);
-        println!("{:?}", d);
-
         let mut res: Headers = Headers {
             raw: raw.clone(),
             list: vec![],
@@ -79,6 +88,20 @@ impl Headers {
         res
     }
 
+    /// Create string of headers from list
+    pub fn to_string(list: Vec<Header>) -> String {
+        let mut result = "".to_string();
+        for h in list {
+            result = format!(
+                "{result}{}: {}{CRLF}",
+                h.name.to_lowercase(),
+                h.value.to_lowercase()
+            );
+        }
+        result = format!("{result}{CRLF}");
+        result
+    }
+
     /// Create headers from bytes
     pub fn from_bytes(heads: &Vec<u8>) -> Result<Self> {
         let res = str::from_utf8(heads);
@@ -90,15 +113,36 @@ impl Headers {
     }
 
     /// For change request headers host to host of target
-    pub fn change_host(heads: String, target: &str) -> String {
-        let reg = Regex::new(r"Host: *.*\r\n").unwrap();
-        let capts = reg.captures(heads.as_str());
-        if let None = capts {
-            return heads;
+    pub fn change_header(&self, name: &str, value: &str) -> Option<Self> {
+        let mut new_list: Vec<Header> = vec![];
+        let mut check = false;
+        for h in self.list.clone() {
+            if name.to_lowercase() == h.name.as_str().to_lowercase() {
+                new_list.push(Header {
+                    name: name.to_string(),
+                    value: value.to_string(),
+                });
+                check = true;
+            } else {
+                new_list.push(Header {
+                    name: h.name.to_string(),
+                    value: h.value.to_string(),
+                });
+            }
         }
-        let capts = capts.unwrap();
-        let old_host = capts.get(0).unwrap().as_str();
-        heads.replace(old_host, format!("Host: {}\r\n", target).as_str())
+        if !check {
+            return None;
+        }
+
+        let prefix = Headers::get_headers_prefix(&self.raw)?;
+        let new_h = Headers::new(prefix.as_str(), new_list);
+
+        let new_headers = Headers {
+            list: new_h.list,
+            raw: new_h.raw,
+        };
+
+        Some(new_headers)
     }
 
     /// Parse content length from request headers
@@ -160,18 +204,15 @@ impl Headers {
     }
 
     // Get request prefix
-    fn get_headers_prefix(raw: &String) -> Result<String> {
+    fn get_headers_prefix(raw: &String) -> Option<String> {
         let reg = Regex::new(format!(r".+{CRLF}").as_str()).unwrap();
         let capts = reg.captures(raw.as_str());
         if let None = capts {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                format!("Wrong HTTP protocol headers: {}", raw),
-            ));
+            return None;
         }
         let capts = capts.unwrap();
         let result = capts.get(0).unwrap().as_str();
-        Ok(result.to_string())
+        Some(result.to_string())
     }
 
     /// Get method from raw headers

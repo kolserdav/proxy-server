@@ -1,4 +1,6 @@
+use crate::http::headers::Header;
 use crate::http::{headers::Headers, request::Request};
+use crate::prelude::constants::HTTP_VERSION_DEFAULT;
 use crate::prelude::target;
 
 #[cfg(test)]
@@ -60,12 +62,22 @@ pub fn test_proxy_server() -> Result<()> {
 
 #[test]
 fn test_change_header_host() -> Result<()> {
-    let headers = Headers::from_string(format!("Host: {}{CRLF}", super::PROXY_ADDRESS));
+    let headers = Headers::new(
+        HTTP_VERSION_DEFAULT,
+        vec![Header {
+            name: "Host".to_string(),
+            value: super::PROXY_ADDRESS.to_string(),
+        }],
+    );
     let mut req = Request::create(headers);
-    req.change_host(super::TARGET_ADDRESS);
+    req.change_host(super::TARGET_ADDRESS)?;
+
     assert_eq!(
         req.headers.raw,
-        format!("Host: {}{CRLF}", super::TARGET_ADDRESS)
+        format!(
+            "{HTTP_VERSION_DEFAULT}{CRLF}host: {}{CRLF}{CRLF}",
+            super::TARGET_ADDRESS
+        )
     );
     Ok(())
 }
