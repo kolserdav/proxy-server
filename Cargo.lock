@@ -126,8 +126,9 @@ dependencies = [
 
 [[package]]
 name = "proxy-server"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
+ "cfg-if",
  "napi",
  "napi-derive",
  "regex",

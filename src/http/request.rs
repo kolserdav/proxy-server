@@ -5,8 +5,12 @@ use regex::Regex;
 use serde::Serialize;
 use std::str;
 
+cfg_if::cfg_if! {
+    if #[cfg(napi)] {
+        #[napi(object)]
+    }
+}
 #[derive(Debug, Serialize, Clone)]
-#[cfg_attr(feature = "napi", napi(object))]
 pub struct Request {
     pub url: String,
     pub protocol: String,
