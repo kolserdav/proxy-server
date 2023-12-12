@@ -10,6 +10,7 @@ use std::{
     str,
 };
 
+/// HTTP header
 #[cfg_attr(feature = "napi", napi(object))]
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Header {
@@ -17,6 +18,7 @@ pub struct Header {
     pub value: String,
 }
 
+/// HTTP headers
 #[cfg_attr(feature = "napi", napi(object))]
 #[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Headers {
