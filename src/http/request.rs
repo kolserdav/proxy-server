@@ -65,7 +65,7 @@ impl Request {
     }
 
     pub fn change_host(&mut self, target: &str) -> Result<()> {
-        let heads = self.headers.change_header("host", target)?;
+        let heads = self.headers.set_header("host", target)?;
 
         self.headers = heads;
         self.host = target.to_string();

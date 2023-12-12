@@ -112,10 +112,9 @@ impl Headers {
         Ok(Headers::from_string(res))
     }
 
-    /// For change request headers host to host of target
-    pub fn change_header(&self, name: &str, value: &str) -> Result<Self> {
-        let mut new_list: Vec<Header> = vec![];
+    fn change_header(&self, name: &str, value: &str) -> (Vec<Header>, bool) {
         let mut check = false;
+        let mut new_list: Vec<Header> = vec![];
         for h in self.list.clone() {
             if name.to_lowercase() == h.name.as_str().to_lowercase() {
                 new_list.push(Header {
@@ -130,30 +129,18 @@ impl Headers {
                 });
             }
         }
-        if !check {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Changed header is missing",
-            ));
-        }
-
-        let prefix = Headers::get_headers_prefix(&self.raw)?;
-        let new_h = Headers::new(prefix.as_str(), new_list);
-
-        let new_headers = Headers {
-            list: new_h.list,
-            raw: new_h.raw,
-        };
-
-        Ok(new_headers)
+        (new_list, check)
     }
 
-    pub fn add_header(&self, name: &str, value: &str) -> Result<Self> {
-        let mut new_list = self.list.to_owned();
-        new_list.push(Header {
-            name: name.to_string(),
-            value: value.to_string(),
-        });
+    /// Set new header or change old one
+    pub fn set_header(&self, name: &str, value: &str) -> Result<Self> {
+        let (mut new_list, check) = self.change_header(name, value);
+        if !check {
+            new_list.push(Header {
+                name: name.to_string(),
+                value: value.to_string(),
+            });
+        }
 
         let prefix = Headers::get_headers_prefix(&self.raw)?;
         let new_h = Headers::new(prefix.as_str(), new_list);

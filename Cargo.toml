@@ -1,6 +1,6 @@
 [package]
 name = "proxy-server"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "Low level proxy server"
 authors = ["Sergey Kolmiller <uyem.ru@gmail.com>"]
@@ -12,8 +12,6 @@ repository = "https://github.com/kolserdav/proxy-server"
 include = ["README.md", "LICENSE", "Cargo.toml", "/src/*.rs", "src/**/*.rs"]
 rust-version = "1.67"
 
-[lib]
-name = "proxy_server"
 
 [features]
 default = ["chunk_1KB"]
