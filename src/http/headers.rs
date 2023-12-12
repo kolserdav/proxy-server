@@ -3,7 +3,7 @@ use crate::http::CRLF;
 #[allow(unused_imports)]
 use napi_derive::napi;
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     io::{Error, ErrorKind, Result},
@@ -11,14 +11,14 @@ use std::{
 };
 
 #[cfg_attr(feature = "napi", napi(object))]
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Header {
     pub name: String,
     pub value: String,
 }
 
 #[cfg_attr(feature = "napi", napi(object))]
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Headers {
     pub raw: String,
     pub list: Vec<Header>,
@@ -113,7 +113,7 @@ impl Headers {
     }
 
     /// For change request headers host to host of target
-    pub fn change_header(&self, name: &str, value: &str) -> Option<Self> {
+    pub fn change_header(&self, name: &str, value: &str) -> Result<Self> {
         let mut new_list: Vec<Header> = vec![];
         let mut check = false;
         for h in self.list.clone() {
@@ -131,7 +131,10 @@ impl Headers {
             }
         }
         if !check {
-            return None;
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Changed header is missing",
+            ));
         }
 
         let prefix = Headers::get_headers_prefix(&self.raw)?;
@@ -142,7 +145,25 @@ impl Headers {
             raw: new_h.raw,
         };
 
-        Some(new_headers)
+        Ok(new_headers)
+    }
+
+    pub fn add_header(&self, name: &str, value: &str) -> Result<Self> {
+        let mut new_list = self.list.to_owned();
+        new_list.push(Header {
+            name: name.to_string(),
+            value: value.to_string(),
+        });
+
+        let prefix = Headers::get_headers_prefix(&self.raw)?;
+        let new_h = Headers::new(prefix.as_str(), new_list);
+
+        let new_headers = Headers {
+            list: new_h.list,
+            raw: new_h.raw,
+        };
+
+        Ok(new_headers)
     }
 
     /// Parse content length from request headers
@@ -204,15 +225,18 @@ impl Headers {
     }
 
     // Get request prefix
-    fn get_headers_prefix(raw: &String) -> Option<String> {
+    fn get_headers_prefix(raw: &String) -> Result<String> {
         let reg = Regex::new(format!(r".+{CRLF}").as_str()).unwrap();
         let capts = reg.captures(raw.as_str());
         if let None = capts {
-            return None;
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Headers prefix didn't find",
+            ));
         }
         let capts = capts.unwrap();
         let result = capts.get(0).unwrap().as_str();
-        Some(result.to_string())
+        Ok(result.to_string())
     }
 
     /// Get method from raw headers

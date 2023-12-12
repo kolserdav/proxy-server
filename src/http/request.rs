@@ -3,7 +3,7 @@ use crate::http::headers::Headers;
 #[allow(unused_imports)]
 use napi_derive::napi;
 use regex::Regex;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     io::{Error, ErrorKind, Result},
     str,
@@ -11,7 +11,7 @@ use std::{
 
 /// HTTP request
 #[cfg_attr(feature = "napi", napi(object))]
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize, Clone, Deserialize)]
 pub struct Request {
     pub url: String,
     pub host: String,
@@ -67,14 +67,7 @@ impl Request {
     }
 
     pub fn change_host(&mut self, target: &str) -> Result<()> {
-        let heads = self.headers.change_header("host", target);
-        if let None = heads {
-            return Err(Error::new(
-                ErrorKind::InvalidInput,
-                "Header host is missing",
-            ));
-        }
-        let heads = heads.unwrap();
+        let heads = self.headers.change_header("host", target)?;
 
         self.headers = heads;
         self.host = target.to_string();
