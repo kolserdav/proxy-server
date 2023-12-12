@@ -1,6 +1,6 @@
 ///! Module [`Request`]
 use crate::http::headers::Headers;
-#[allow(unused_imports)]
+#[cfg(feature = "napi")]
 use napi_derive::napi;
 use regex::Regex;
 use serde::{Deserialize, Serialize};

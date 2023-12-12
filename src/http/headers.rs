@@ -1,6 +1,6 @@
 ///! Module [`Header`]
 use crate::http::CRLF;
-#[allow(unused_imports)]
+#[cfg(feature = "napi")]
 use napi_derive::napi;
 use regex::Regex;
 use serde::{Deserialize, Serialize};

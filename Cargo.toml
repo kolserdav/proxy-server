@@ -22,10 +22,10 @@ chunk_50KB = []
 chunk_100KB = []
 chunk_500KB = []
 chunk_1MB = []
-napi = []
+napi = ["dep:napi", "dep:napi-derive"]
 
 [dependencies]
-napi = "2.14.1"
-napi-derive = "2.14.2"
+napi = { version = "2.14.1", optional = true }
+napi-derive = { version = "2.14.2", optional = true }
 regex = "1.7.1"
 serde = { version = "1.0.193", features = [ "derive" ] }
