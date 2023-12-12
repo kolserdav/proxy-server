@@ -4,14 +4,12 @@ use crate::http::headers::Headers;
 use napi_derive::napi;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use std::{
-    io::{Error, ErrorKind, Result},
-    str,
-};
+use std::{io::Result, str};
 
 /// HTTP request
 #[cfg_attr(feature = "napi", napi(object))]
 #[derive(Debug, Serialize, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Request {
     pub url: String,
     pub host: String,
