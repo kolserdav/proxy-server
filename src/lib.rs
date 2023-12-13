@@ -133,15 +133,16 @@ impl Builder {
 
         let pool = ThreadPool::new(self.threads);
         for stream in listener.incoming() {
+            if let Err(err) = stream {
+                println!("Error in incoming stream {:?}", err);
+                continue;
+            }
+
             if let Some(func) = cb {
                 self.target = func(&self.target);
             }
             let cl = Handler::new(self);
             pool.execute(|| {
-                if let Err(err) = stream {
-                    println!("Error in incoming stream {:?}", err);
-                    return;
-                }
                 let stream = stream.unwrap();
                 let res = cl.handle_proxy(stream);
                 if let Err(err) = res {
@@ -216,7 +217,6 @@ impl Handler {
                 str::from_utf8(&body).unwrap(),
             );
             http.write(&body)?;
-            http.write(&[0u8])?;
         }
 
         let h = http.read_headers()?;
@@ -237,9 +237,7 @@ impl Handler {
             h.clone(),
         )?;
         _log.println(LogLevel::Info, TAG, "target response", &req_http);
-        client
-            .write(req_http.headers.raw.as_bytes())
-            .expect("Failed send headers in handle proxy");
+        client.write(req_http.headers.raw.as_bytes())?;
         client.tunnel(&mut http, &_log)?;
 
         Ok(())

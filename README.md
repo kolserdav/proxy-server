@@ -30,8 +30,10 @@ fn main() {
 		.expect("Error in proxy");
 }
 ```
- With check and change target if needed on ev  ery request                                       
- ```rust    
+
+With check and change target if needed on ev ery request
+
+```rust
 fn get_actual_target(old: &str) -> &'static str {
 	let target1 = "127.0.0.1:3001";
 	let target2 = "127.0.0.1:3003";
@@ -42,11 +44,15 @@ fn get_actual_target(old: &str) -> &'static str {
 	};
 	res
 }
-  
+
 fn main() {
 	let cb: ChangeTarget = |old| get_actual_target(old);
 	Builder::new()
 		.bind(Some(cb))
-        	.expect("Error in proxy");
+       	.expect("Error in proxy");
 }
 ```
+
+## Versioning
+
+This package follows the Semantic Versioning (SemVer) scheme. See the [CHANGELOG](CHANGELOG.md) for release history.

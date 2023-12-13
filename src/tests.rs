@@ -62,7 +62,6 @@ pub fn test_proxy_server() -> Result<()> {
     let send_body = t_v.join("");
 
     http.write(body.as_bytes())?;
-    http.write(&[0u8])?;
 
     let buff = http.read_headers()?;
     let req = Request::new(
@@ -81,6 +80,7 @@ pub fn test_proxy_server() -> Result<()> {
     _log.println(LogLevel::Info, TAG, "body: ", &rec_body);
 
     assert_eq!(send_body, rec_body);
+
     Ok(())
 }
 
@@ -116,5 +116,6 @@ fn test_change_header_host() -> Result<()> {
             super::TARGET_ADDRESS
         )
     );
+
     Ok(())
 }

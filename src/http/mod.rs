@@ -3,7 +3,7 @@ pub mod request;
 pub mod status;
 use self::request::Request;
 
-use super::log::{Log, LogLevel};
+use super::log::Log;
 use super::prelude::constants::*;
 ///! Module [`Http`].
 ///! The minimum set of methods to work through [`TcpStream`].
@@ -16,8 +16,6 @@ use std::{
 
 /// End of line constant ([`\r\n`])
 pub const CRLF: &str = "\r\n";
-
-const TAG: &str = "Http";
 
 #[derive(Debug)]
 pub struct Http {
@@ -85,14 +83,7 @@ impl Http {
         let mut size: usize = 0;
         loop {
             let mut b = [0; CHUNK_SIZE];
-            let r_res = http.read(&mut b);
-            if let Err(e) = r_res {
-                let log_l = match e.kind() {
-                    ErrorKind::ConnectionReset => LogLevel::Info,
-                    _ => LogLevel::Error,
-                };
-                _log.println(log_l, TAG, "Failed read chunk", e);
-            }
+            http.read(&mut b)?;
             let mut buf = vec![];
             b.map(|_b| {
                 if _b != 0 {
