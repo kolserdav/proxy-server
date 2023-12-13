@@ -37,10 +37,16 @@ pub fn test_proxy_server() -> Result<()> {
 
     let raw_headers = Headers::new_request(
         format!("POST / HTTP/1.1").as_str(),
-        vec![Header {
-            name: "Host".to_string(),
-            value: server.address.to_string(),
-        }],
+        vec![
+            Header {
+                name: "Host".to_string(),
+                value: server.address.to_string(),
+            },
+            Header {
+                name: "Content-Length".to_string(),
+                value: ECHO.len().to_string(),
+            },
+        ],
     )
     .raw;
 

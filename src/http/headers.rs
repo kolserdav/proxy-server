@@ -159,22 +159,21 @@ impl Headers {
             });
         }
 
-        let mut new_h = Headers::new();
-
-        if self.is_response() {
-            let status = Headers::get_status(&self.raw)?;
-            new_h = Headers::new_response(&status, new_list);
-        } else {
-            let prefix = Headers::get_headers_prefix(&self.raw)?;
-            new_h = Headers::new_request(prefix.as_str(), new_list);
-        }
-
-        let new_headers = Headers {
-            list: new_h.list,
-            raw: new_h.raw,
+        let new_h = match self.is_response() {
+            true => {
+                let status = Headers::get_status(&self.raw)?;
+                Headers::new_response(&status, new_list)
+            }
+            false => {
+                let prefix = Headers::get_headers_prefix(&self.raw)?;
+                Headers::new_request(prefix.as_str(), new_list)
+            }
         };
 
-        Ok(new_headers)
+        Ok(Headers {
+            list: new_h.list,
+            raw: new_h.raw,
+        })
     }
 
     /// Parse content length from request headers
@@ -237,7 +236,6 @@ impl Headers {
 
     // Get request prefix
     fn get_status(raw: &String) -> Result<Status> {
-        println!("1 {}", raw);
         let reg = Regex::new(format!(r".+{CRLF}").as_str()).unwrap();
         let capts = reg.captures(raw.as_str());
         if let None = capts {
@@ -267,7 +265,7 @@ impl Headers {
         if let Err(err) = code {
             return Err(Error::new(
                 ErrorKind::InvalidInput,
-                "Failed parse status code",
+                format!("Failed parse status code {:?}", err),
             ));
         }
         let code = code.unwrap();

@@ -1,9 +1,5 @@
 ///! Module [`StatusDefault`]
-use std::{
-    fmt,
-    fmt::{Display, Formatter},
-    str,
-};
+use std::str;
 
 use regex::Regex;
 
