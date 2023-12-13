@@ -64,7 +64,11 @@ use log::{Log, LogLevel, LOG_LEVEL};
 pub mod prelude;
 use prelude::constants::*;
 
-use crate::http::request::{Request, Socket};
+use crate::http::{
+    headers::Headers,
+    request::{Request, Socket},
+    status::Status,
+};
 
 #[cfg(test)]
 mod tests;
@@ -190,9 +194,11 @@ impl Handler {
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
             _log.println(LogLevel::Warn, TAG, "Failed proxy", e);
-            client.set_status(502)?;
-            client.set_content_length(0)?;
-            client.set_end_line()?;
+            client.write(
+                Headers::new_response(&Status::new(502), vec![])
+                    .raw
+                    .as_bytes(),
+            )?;
             client.flush()?;
             sleep(Duration::from_millis(100));
             return Ok(());
@@ -229,12 +235,11 @@ impl Handler {
                 error,
             },
             h.clone(),
-        );
+        )?;
         _log.println(LogLevel::Info, TAG, "target response", &req_http);
         client
-            .write(&h)
+            .write(req_http.headers.raw.as_bytes())
             .expect("Failed send headers in handle proxy");
-
         client.tunnel(&mut http, &_log)?;
 
         Ok(())

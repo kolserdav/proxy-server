@@ -2,7 +2,6 @@ pub mod headers;
 pub mod request;
 pub mod status;
 use self::request::Request;
-use status::Status;
 
 use super::log::{Log, LogLevel};
 use super::prelude::constants::*;
@@ -17,8 +16,6 @@ use std::{
 
 /// End of line constant ([`\r\n`])
 pub const CRLF: &str = "\r\n";
-/// Version of HTTP protocol ([`HTTP/1.1`])
-pub const VERSION: &str = "HTTP/1.1";
 
 const TAG: &str = "Http";
 
@@ -37,29 +34,6 @@ impl Http {
     /// Create [`Http`] from exists socket
     pub fn from(socket: TcpStream) -> Http {
         Http { socket }
-    }
-
-    #[deprecated]
-    /// Write HTTP status to response
-    pub fn set_status(&mut self, code: u16) -> Result<usize> {
-        let status = Status::new(code);
-        println!("{} {} {}{}", VERSION, status.code, status.name, CRLF);
-        self.write(format!("{} {} {}{}", VERSION, status.code, status.name, CRLF).as_bytes())
-    }
-
-    #[deprecated]
-    /// Write content length header
-    pub fn set_content_length<T>(&mut self, len: T) -> Result<usize>
-    where
-        T: Sized + std::fmt::Debug,
-    {
-        self.write(format!("Content-Length: {:?}{CRLF}", len).as_bytes())
-    }
-
-    #[deprecated]
-    /// Write end line to socket
-    pub fn set_end_line(&mut self) -> Result<usize> {
-        self.write(format!("{CRLF}").as_bytes())
     }
 
     /// Write end of request

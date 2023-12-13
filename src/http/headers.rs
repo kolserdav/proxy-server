@@ -10,6 +10,8 @@ use std::{
     str,
 };
 
+use super::status::Status;
+
 /// HTTP header
 #[cfg_attr(feature = "napi", napi(object))]
 #[derive(Debug, Serialize, Clone, Deserialize)]
@@ -33,7 +35,12 @@ impl fmt::Display for Header {
 }
 
 impl Headers {
-    pub fn new(prefix: &str, list: Vec<Header>) -> Self {
+    pub fn new() -> Self {
+        Headers::from_string("".to_string())
+    }
+
+    // Create request headers
+    pub fn new_request(prefix: &str, list: Vec<Header>) -> Self {
         let postfix = Headers::to_string(list);
         let raw = format!(
             "{}{CRLF}{postfix}",
@@ -42,6 +49,14 @@ impl Headers {
                 .replace_all(prefix, "")
                 .to_string()
         );
+        Headers::from_string(raw)
+    }
+
+    /// Create response headers
+    pub fn new_response(status: &Status, list: Vec<Header>) -> Self {
+        let postfix = Headers::to_string(list);
+        let prefix = status.to_full_string();
+        let raw = format!("{prefix}{CRLF}{postfix}");
         Headers::from_string(raw)
     }
 
@@ -144,8 +159,15 @@ impl Headers {
             });
         }
 
-        let prefix = Headers::get_headers_prefix(&self.raw)?;
-        let new_h = Headers::new(prefix.as_str(), new_list);
+        let mut new_h = Headers::new();
+
+        if self.is_response() {
+            let status = Headers::get_status(&self.raw)?;
+            new_h = Headers::new_response(&status, new_list);
+        } else {
+            let prefix = Headers::get_headers_prefix(&self.raw)?;
+            new_h = Headers::new_request(prefix.as_str(), new_list);
+        }
 
         let new_headers = Headers {
             list: new_h.list,
@@ -214,7 +236,8 @@ impl Headers {
     }
 
     // Get request prefix
-    fn get_headers_prefix(raw: &String) -> Result<String> {
+    fn get_status(raw: &String) -> Result<Status> {
+        println!("1 {}", raw);
         let reg = Regex::new(format!(r".+{CRLF}").as_str()).unwrap();
         let capts = reg.captures(raw.as_str());
         if let None = capts {
@@ -225,7 +248,36 @@ impl Headers {
         }
         let capts = capts.unwrap();
         let result = capts.get(0).unwrap().as_str();
-        Ok(result.to_string())
+
+        let result = Regex::new(format!(r"^HTTPS?\/\d+\.\d+ ").as_str())
+            .unwrap()
+            .replace_all(result, "")
+            .to_string();
+
+        let reg = Regex::new(format!(r"^\d+").as_str()).unwrap();
+        let capts = reg.captures(result.as_str());
+        if let None = capts {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Headers prefix didn't find",
+            ));
+        }
+        let capts = capts.unwrap();
+        let code = capts.get(0).unwrap().as_str().parse::<u16>();
+        if let Err(err) = code {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Failed parse status code",
+            ));
+        }
+        let code = code.unwrap();
+
+        let text = Regex::new(format!(r"^\d+ ").as_str())
+            .unwrap()
+            .replace_all(result.as_str(), "")
+            .to_string();
+
+        Ok(Status { code, text })
     }
 
     /// Get method from raw headers
@@ -238,5 +290,32 @@ impl Headers {
         let capts = capts.unwrap();
         let method = capts.get(0).unwrap().as_str();
         method.to_string()
+    }
+
+    // Get request prefix
+    fn get_headers_prefix(raw: &String) -> Result<String> {
+        let reg = Regex::new(format!(r".+{CRLF}").as_str()).unwrap();
+        let capts = reg.captures(raw.as_str());
+        if let None = capts {
+            return Err(Error::new(
+                ErrorKind::InvalidInput,
+                "Headers prefix didn't find",
+            ));
+        }
+        let capts = capts.unwrap();
+        let result = capts.get(0).unwrap().as_str();
+        let result = Regex::new(format!(r"{CRLF}+$").as_str())
+            .unwrap()
+            .replace_all(result, "");
+        Ok(result.to_string())
+    }
+
+    fn is_response(&self) -> bool {
+        let reg = Regex::new(r"^HTTPS?/\d+\.\d+").unwrap();
+        let capts = reg.captures(self.raw.as_str());
+        if let None = capts {
+            return false;
+        }
+        true
     }
 }

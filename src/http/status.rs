@@ -1,262 +1,273 @@
-///! Module [`Status`]
+///! Module [`StatusDefault`]
 use std::{
     fmt,
     fmt::{Display, Formatter},
     str,
 };
 
+use regex::Regex;
+
+use crate::{http::CRLF, prelude::constants::HTTP_VERSION_DEFAULT};
+
 /// HTTP status
 #[derive(Debug)]
 pub struct Status {
-    pub name: &'static str,
+    pub text: String,
+    pub code: u16,
+}
+
+/// HTTP defaul status
+#[derive(Debug)]
+pub struct StatusDefault {
+    pub text: &'static str,
     pub code: u16,
 }
 
 /// HTTP statuses
-/// Reference https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
-pub const STATUSES: [Status; 61] = [
-    Status {
-        name: "Continue",
+/// Reference https://developer.mozilla.org/en-US/docs/Web/HTTP/StatusDefault
+pub const STATUSES: [StatusDefault; 61] = [
+    StatusDefault {
+        text: "Continue",
         code: 100,
     },
-    Status {
-        name: "Switching Protocols",
+    StatusDefault {
+        text: "Switching Protocols",
         code: 101,
     },
-    Status {
-        name: "Processing",
+    StatusDefault {
+        text: "Processing",
         code: 102,
     },
-    Status {
-        name: "Early Hints",
+    StatusDefault {
+        text: "Early Hints",
         code: 103,
     },
-    Status {
-        name: "OK",
+    StatusDefault {
+        text: "OK",
         code: 200,
     },
-    Status {
-        name: "Created",
+    StatusDefault {
+        text: "Created",
         code: 201,
     },
-    Status {
-        name: "Accepted",
+    StatusDefault {
+        text: "Accepted",
         code: 202,
     },
-    Status {
-        name: "Non-Authoritative Information",
+    StatusDefault {
+        text: "Non-Authoritative Information",
         code: 203,
     },
-    Status {
-        name: "No Content",
+    StatusDefault {
+        text: "No Content",
         code: 204,
     },
-    Status {
-        name: "Reset Content",
+    StatusDefault {
+        text: "Reset Content",
         code: 205,
     },
-    Status {
-        name: "Partial Content",
+    StatusDefault {
+        text: "Partial Content",
         code: 206,
     },
-    Status {
-        name: "Multi-Status",
+    StatusDefault {
+        text: "Multi-StatusDefault",
         code: 207,
     },
-    Status {
-        name: "Already Reported",
+    StatusDefault {
+        text: "Already Reported",
         code: 208,
     },
-    Status {
-        name: "IM Used",
+    StatusDefault {
+        text: "IM Used",
         code: 226,
     },
-    Status {
-        name: "Multiple Choices",
+    StatusDefault {
+        text: "Multiple Choices",
         code: 300,
     },
-    Status {
-        name: "Moved Permanently",
+    StatusDefault {
+        text: "Moved Permanently",
         code: 301,
     },
-    Status {
-        name: "Found",
+    StatusDefault {
+        text: "Found",
         code: 302,
     },
-    Status {
-        name: "See Other",
+    StatusDefault {
+        text: "See Other",
         code: 303,
     },
-    Status {
-        name: "Not Modified",
+    StatusDefault {
+        text: "Not Modified",
         code: 304,
     },
-    Status {
-        name: "Temporary Redirect",
+    StatusDefault {
+        text: "Temporary Redirect",
         code: 307,
     },
-    Status {
-        name: "Permanent Redirect",
+    StatusDefault {
+        text: "Permanent Redirect",
         code: 308,
     },
-    Status {
-        name: "Bad Request",
+    StatusDefault {
+        text: "Bad Request",
         code: 400,
     },
-    Status {
-        name: "Unauthorized",
+    StatusDefault {
+        text: "Unauthorized",
         code: 401,
     },
-    Status {
-        name: "Payment Required",
+    StatusDefault {
+        text: "Payment Required",
         code: 402,
     },
-    Status {
-        name: "Forbidden",
+    StatusDefault {
+        text: "Forbidden",
         code: 403,
     },
-    Status {
-        name: "Not Found",
+    StatusDefault {
+        text: "Not Found",
         code: 404,
     },
-    Status {
-        name: "Method Not Allowed",
+    StatusDefault {
+        text: "Method Not Allowed",
         code: 405,
     },
-    Status {
-        name: "Not Acceptable",
+    StatusDefault {
+        text: "Not Acceptable",
         code: 406,
     },
-    Status {
-        name: "Proxy Authentication Required",
+    StatusDefault {
+        text: "Proxy Authentication Required",
         code: 407,
     },
-    Status {
-        name: "Request Timeout",
+    StatusDefault {
+        text: "Request Timeout",
         code: 408,
     },
-    Status {
-        name: "Conflict",
+    StatusDefault {
+        text: "Conflict",
         code: 409,
     },
-    Status {
-        name: "Gone",
+    StatusDefault {
+        text: "Gone",
         code: 410,
     },
-    Status {
-        name: "Length Required",
+    StatusDefault {
+        text: "Length Required",
         code: 411,
     },
-    Status {
-        name: "Precondition Failed",
+    StatusDefault {
+        text: "Precondition Failed",
         code: 412,
     },
-    Status {
-        name: "Payload Too Large",
+    StatusDefault {
+        text: "Payload Too Large",
         code: 413,
     },
-    Status {
-        name: "URI Too Long",
+    StatusDefault {
+        text: "URI Too Long",
         code: 414,
     },
-    Status {
-        name: "Unsupported Media Type",
+    StatusDefault {
+        text: "Unsupported Media Type",
         code: 415,
     },
-    Status {
-        name: "Range Not Satisfiable",
+    StatusDefault {
+        text: "Range Not Satisfiable",
         code: 416,
     },
-    Status {
-        name: "Expectation Failed",
+    StatusDefault {
+        text: "Expectation Failed",
         code: 417,
     },
-    Status {
-        name: "I'm a teapot",
+    StatusDefault {
+        text: "I'm a teapot",
         code: 418,
     },
-    Status {
-        name: "Misdirected Request",
+    StatusDefault {
+        text: "Misdirected Request",
         code: 421,
     },
-    Status {
-        name: "Unprocessable Content",
+    StatusDefault {
+        text: "Unprocessable Content",
         code: 422,
     },
-    Status {
-        name: "Locked",
+    StatusDefault {
+        text: "Locked",
         code: 423,
     },
-    Status {
-        name: "Failed Dependency",
+    StatusDefault {
+        text: "Failed Dependency",
         code: 424,
     },
-    Status {
-        name: "Upgrade Required",
+    StatusDefault {
+        text: "Upgrade Required",
         code: 426,
     },
-    Status {
-        name: "Precondition Required",
+    StatusDefault {
+        text: "Precondition Required",
         code: 428,
     },
-    Status {
-        name: "Too Many Requests",
+    StatusDefault {
+        text: "Too Many Requests",
         code: 429,
     },
-    Status {
-        name: "Request Header Fields Too Large",
+    StatusDefault {
+        text: "Request Header Fields Too Large",
         code: 431,
     },
-    Status {
-        name: "Request Header Fields Too Large",
+    StatusDefault {
+        text: "Request Header Fields Too Large",
         code: 431,
     },
-    Status {
-        name: "Unavailable For Legal Reasons",
+    StatusDefault {
+        text: "Unavailable For Legal Reasons",
         code: 451,
     },
-    Status {
-        name: "Internal Server Error",
+    StatusDefault {
+        text: "Internal Server Error",
         code: 500,
     },
-    Status {
-        name: "Not Implemented",
+    StatusDefault {
+        text: "Not Implemented",
         code: 501,
     },
-    Status {
-        name: "Bad Gateway",
+    StatusDefault {
+        text: "Bad Gateway",
         code: 502,
     },
-    Status {
-        name: "Service Unavailable",
+    StatusDefault {
+        text: "Service Unavailable",
         code: 503,
     },
-    Status {
-        name: "Gateway Timeout",
+    StatusDefault {
+        text: "Gateway Timeout",
         code: 504,
     },
-    Status {
-        name: "HTTP Version Not Supported",
+    StatusDefault {
+        text: "HTTP Version Not Supported",
         code: 505,
     },
-    Status {
-        name: "Variant Also Negotiates",
+    StatusDefault {
+        text: "Variant Also Negotiates",
         code: 506,
     },
-    Status {
-        name: "Insufficient Storage",
+    StatusDefault {
+        text: "Insufficient Storage",
         code: 507,
     },
-    Status {
-        name: "Loop Detected",
+    StatusDefault {
+        text: "Loop Detected",
         code: 508,
     },
-    Status {
-        name: "Not Extended",
+    StatusDefault {
+        text: "Not Extended",
         code: 510,
     },
-    Status {
-        name: "Network Authentication Required",
+    StatusDefault {
+        text: "Network Authentication Required",
         code: 511,
     },
 ];
@@ -265,20 +276,30 @@ impl Status {
     /// Create HTTP status from code
     pub fn new(code: u16) -> Status {
         let mut status = Status {
-            name: "Not Implemented",
+            text: "Not Implemented".to_string(),
             code: 501,
         };
         for f in STATUSES {
             if code == f.code {
-                status = f;
+                status = Status {
+                    code: f.code,
+                    text: f.text.to_string(),
+                };
             }
         }
         status
     }
-}
 
-impl Display for Status {
-    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.code, self.name)
+    /// Get HTTP protocol prefix like `HTTP/1.1 200 OK`
+    pub fn to_full_string(&self) -> String {
+        let d = self.to_string();
+        let res = Regex::new(format!(r"{CRLF}$").as_str())
+            .unwrap()
+            .replace_all(d.as_str(), "");
+        format!("{HTTP_VERSION_DEFAULT} {}", res)
+    }
+
+    pub fn to_string(&self) -> String {
+        format!("{} {}", self.code, self.text)
     }
 }
