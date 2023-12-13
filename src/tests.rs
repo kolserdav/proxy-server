@@ -1,7 +1,8 @@
 use crate::http::headers::Header;
 use crate::http::request::Socket;
+use crate::http::status::Status;
 use crate::http::{headers::Headers, request::Request};
-use crate::prelude::constants::{HTTP_VERSION_DEFAULT, TTL_DEFAULT};
+use crate::prelude::constants::TTL_DEFAULT;
 use crate::prelude::target;
 
 #[cfg(test)]
@@ -33,9 +34,23 @@ pub fn test_proxy_server() -> Result<()> {
     sleep(Duration::from_secs(1));
 
     let mut http = Http::connect(server.address)?;
-    http.write(format!("POST / HTTP/1.1{CRLF}Host: {}{CRLF}", server.address).as_bytes())?;
-    http.set_content_length(ECHO.len())?;
-    http.set_end_line()?;
+
+    let raw_headers = Headers::new_request(
+        format!("POST / HTTP/1.1").as_str(),
+        vec![
+            Header {
+                name: "Host".to_string(),
+                value: server.address.to_string(),
+            },
+            Header {
+                name: "Content-Length".to_string(),
+                value: ECHO.len().to_string(),
+            },
+        ],
+    )
+    .raw;
+
+    http.write(raw_headers.as_bytes())?;
 
     let mut t_v = vec![];
     let mut body: String = "".to_string();
@@ -47,7 +62,6 @@ pub fn test_proxy_server() -> Result<()> {
     let send_body = t_v.join("");
 
     http.write(body.as_bytes())?;
-    http.write(&[0u8])?;
 
     let buff = http.read_headers()?;
     let req = Request::new(
@@ -66,13 +80,18 @@ pub fn test_proxy_server() -> Result<()> {
     _log.println(LogLevel::Info, TAG, "body: ", &rec_body);
 
     assert_eq!(send_body, rec_body);
+
     Ok(())
 }
 
 #[test]
 fn test_change_header_host() -> Result<()> {
-    let headers = Headers::new(
-        HTTP_VERSION_DEFAULT,
+    let status = Status {
+        code: 200,
+        text: "OK".to_string(),
+    };
+    let headers = Headers::new_response(
+        &status,
         vec![Header {
             name: "Host".to_string(),
             value: super::PROXY_ADDRESS.to_string(),
@@ -83,7 +102,7 @@ fn test_change_header_host() -> Result<()> {
             host: super::PROXY_ADDRESS.to_string(),
             peer_addr: super::PROXY_ADDRESS.to_string(),
             ttl: TTL_DEFAULT,
-            error: "".to_string()
+            error: "".to_string(),
         },
         headers,
     );
@@ -92,9 +111,11 @@ fn test_change_header_host() -> Result<()> {
     assert_eq!(
         req.headers.raw,
         format!(
-            "{HTTP_VERSION_DEFAULT}{CRLF}host: {}{CRLF}{CRLF}",
+            "{}{CRLF}host: {}{CRLF}{CRLF}",
+            status.to_full_string(),
             super::TARGET_ADDRESS
         )
     );
+
     Ok(())
 }

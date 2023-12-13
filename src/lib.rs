@@ -64,7 +64,11 @@ use log::{Log, LogLevel, LOG_LEVEL};
 pub mod prelude;
 use prelude::constants::*;
 
-use crate::http::request::{Request, Socket};
+use crate::http::{
+    headers::Headers,
+    request::{Request, Socket},
+    status::Status,
+};
 
 #[cfg(test)]
 mod tests;
@@ -129,15 +133,16 @@ impl Builder {
 
         let pool = ThreadPool::new(self.threads);
         for stream in listener.incoming() {
+            if let Err(err) = stream {
+                println!("Error in incoming stream {:?}", err);
+                continue;
+            }
+
             if let Some(func) = cb {
                 self.target = func(&self.target);
             }
             let cl = Handler::new(self);
             pool.execute(|| {
-                if let Err(err) = stream {
-                    println!("Error in incoming stream {:?}", err);
-                    return;
-                }
                 let stream = stream.unwrap();
                 let res = cl.handle_proxy(stream);
                 if let Err(err) = res {
@@ -190,9 +195,11 @@ impl Handler {
         let http = Http::connect(&self.config.target);
         if let Err(e) = &http {
             _log.println(LogLevel::Warn, TAG, "Failed proxy", e);
-            client.set_status(502)?;
-            client.set_content_length(0)?;
-            client.set_end_line()?;
+            client.write(
+                Headers::new_response(&Status::new(502), vec![])
+                    .raw
+                    .as_bytes(),
+            )?;
             client.flush()?;
             sleep(Duration::from_millis(100));
             return Ok(());
@@ -210,7 +217,6 @@ impl Handler {
                 str::from_utf8(&body).unwrap(),
             );
             http.write(&body)?;
-            http.write(&[0u8])?;
         }
 
         let h = http.read_headers()?;
@@ -229,12 +235,9 @@ impl Handler {
                 error,
             },
             h.clone(),
-        );
+        )?;
         _log.println(LogLevel::Info, TAG, "target response", &req_http);
-        client
-            .write(&h)
-            .expect("Failed send headers in handle proxy");
-
+        client.write(req_http.headers.raw.as_bytes())?;
         client.tunnel(&mut http, &_log)?;
 
         Ok(())

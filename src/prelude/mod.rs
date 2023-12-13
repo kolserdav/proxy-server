@@ -7,7 +7,9 @@ use std::{
 
 use crate::{
     http::{
+        headers::{Header, Headers},
         request::{Request, Socket},
+        status::Status,
         Http, CRLF,
     },
     log::{Log, LogLevel},
@@ -70,13 +72,25 @@ pub fn handle_target(client: TcpStream) -> Result<()> {
     )?;
     _log.println(LogLevel::Info, TAG, "headers", &req.headers);
 
-    let res_heads = format!(
-        "Content-Type: plain/text{CRLF}Transfer-Encoding: chunked{CRLF}Server: echo-rs{CRLF}"
+    let res_heads = Headers::new_response(
+        &Status::new(200),
+        vec![
+            Header {
+                name: "Content-Type".to_string(),
+                value: "plain/text".to_string(),
+            },
+            Header {
+                name: "Transfer-Encoding".to_string(),
+                value: "chunked".to_string(),
+            },
+            Header {
+                name: "Server".to_string(),
+                value: "echo-rs".to_string(),
+            },
+        ],
     );
 
-    client.set_status(200)?;
-    client.write(res_heads.as_bytes())?;
-    client.set_end_line()?;
+    client.write(res_heads.raw.as_bytes())?;
 
     if req.content_length != 0 {
         let body = client.read_body(&req)?;

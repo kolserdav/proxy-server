@@ -2,9 +2,8 @@ pub mod headers;
 pub mod request;
 pub mod status;
 use self::request::Request;
-use status::Status;
 
-use super::log::{Log, LogLevel};
+use super::log::Log;
 use super::prelude::constants::*;
 ///! Module [`Http`].
 ///! The minimum set of methods to work through [`TcpStream`].
@@ -17,10 +16,6 @@ use std::{
 
 /// End of line constant ([`\r\n`])
 pub const CRLF: &str = "\r\n";
-/// Version of HTTP protocol ([`HTTP/1.1`])
-pub const VERSION: &str = "HTTP/1.1";
-
-const TAG: &str = "Http";
 
 #[derive(Debug)]
 pub struct Http {
@@ -37,29 +32,6 @@ impl Http {
     /// Create [`Http`] from exists socket
     pub fn from(socket: TcpStream) -> Http {
         Http { socket }
-    }
-
-    #[deprecated]
-    /// Write HTTP status to response
-    pub fn set_status(&mut self, code: u16) -> Result<usize> {
-        let status = Status::new(code);
-        println!("{} {} {}{}", VERSION, status.code, status.name, CRLF);
-        self.write(format!("{} {} {}{}", VERSION, status.code, status.name, CRLF).as_bytes())
-    }
-
-    #[deprecated]
-    /// Write content length header
-    pub fn set_content_length<T>(&mut self, len: T) -> Result<usize>
-    where
-        T: Sized + std::fmt::Debug,
-    {
-        self.write(format!("Content-Length: {:?}{CRLF}", len).as_bytes())
-    }
-
-    #[deprecated]
-    /// Write end line to socket
-    pub fn set_end_line(&mut self) -> Result<usize> {
-        self.write(format!("{CRLF}").as_bytes())
     }
 
     /// Write end of request
@@ -111,14 +83,7 @@ impl Http {
         let mut size: usize = 0;
         loop {
             let mut b = [0; CHUNK_SIZE];
-            let r_res = http.read(&mut b);
-            if let Err(e) = r_res {
-                let log_l = match e.kind() {
-                    ErrorKind::ConnectionReset => LogLevel::Info,
-                    _ => LogLevel::Error,
-                };
-                _log.println(log_l, TAG, "Failed read chunk", e);
-            }
+            http.read(&mut b)?;
             let mut buf = vec![];
             b.map(|_b| {
                 if _b != 0 {
