@@ -234,6 +234,17 @@ impl Headers {
         res.to_string()
     }
 
+    /// Get request chunked
+    pub fn get_chunked(raw: &String) -> bool {
+        let reg = Regex::new(r"transfer-encoding: *chunked").unwrap();
+        let capts = reg.captures(raw.as_str());
+
+        if let None = capts {
+            return false;
+        }
+        return true;
+    }
+
     // Get protocol from raw headers
     pub fn get_protocol(raw: &String) -> String {
         let reg = Regex::new(r"HTTPS?\/\d+\.\d+").unwrap();

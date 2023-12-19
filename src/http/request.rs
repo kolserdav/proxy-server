@@ -22,6 +22,7 @@ pub struct Request {
     pub body: String,
     pub query: String,
     pub error: String,
+    pub chunked: bool,
 }
 
 pub struct Socket {
@@ -62,6 +63,7 @@ impl Request {
             body: "".to_string(),
             query: Headers::get_query(&headers.raw),
             error,
+            chunked: Headers::get_chunked(&headers.raw),
             headers,
         }
     }

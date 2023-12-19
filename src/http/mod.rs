@@ -42,7 +42,7 @@ impl Http {
     /// Read request body
     pub fn read_body(&mut self, req: &Request) -> Result<Vec<u8>> {
         let mut buf: Vec<u8> = vec![];
-        if req.content_length == 0 {
+        if req.content_length == 0 && !req.chunked {
             return Ok(vec![]);
         }
         loop {
