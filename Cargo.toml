@@ -1,6 +1,6 @@
 [package]
 name = "proxy-server"
-version = "0.6.3"
+version = "0.6.4"
 edition = "2021"
 description = "Low level proxy server"
 authors = ["Sergey Kolmiller <uyem.ru@gmail.com>"]

@@ -97,10 +97,7 @@ impl Headers {
                 .as_str()
                 .to_string()
                 .replace(": ", "");
-            res.list.push(Header {
-                name,
-                value: value.to_lowercase(),
-            });
+            res.list.push(Header { name, value });
         }
         res
     }
@@ -109,11 +106,7 @@ impl Headers {
     pub fn to_string(list: Vec<Header>) -> String {
         let mut result = "".to_string();
         for h in list {
-            result = format!(
-                "{result}{}: {}{CRLF}",
-                h.name.to_lowercase(),
-                h.value.to_lowercase()
-            );
+            result = format!("{result}{}: {}{CRLF}", h.name, h.value);
         }
         result = format!("{result}{CRLF}");
         result
@@ -178,11 +171,9 @@ impl Headers {
 
     /// Parse content length from request headers
     pub fn get_content_length(raw: &String) -> Option<u32> {
-        let low = Regex::new(r"(c|C)ontent-(l|L)ength:\s*\d+")
-            .unwrap()
-            .captures(&raw);
+        let raw = raw.to_lowercase();
+        let low = Regex::new(r"content-length: *\d+").unwrap().captures(&raw);
 
-        #[allow(unused_assignments)]
         let mut check: Option<&str> = None;
         if let Some(v) = low {
             let low = v.get(0).unwrap();
@@ -237,6 +228,7 @@ impl Headers {
     /// Get request chunked
     pub fn get_chunked(raw: &String) -> bool {
         let reg = Regex::new(r"transfer-encoding: *chunked").unwrap();
+        let raw = raw.to_lowercase();
         let capts = reg.captures(raw.as_str());
 
         if let None = capts {
