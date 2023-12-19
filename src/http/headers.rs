@@ -218,8 +218,21 @@ impl Headers {
             return "/".to_string();
         }
         let capts = capts.unwrap();
-        let url = capts.get(0).unwrap().as_str();
-        url.to_string()
+        let res = capts.get(0).unwrap().as_str();
+        res.to_string()
+    }
+
+    /// Get query string from raw headers
+    pub fn get_query(raw: &String) -> String {
+        println!("{raw}");
+        let reg = Regex::new(r"\?[a-zA-Z0-9_\-&=]*").unwrap();
+        let capts = reg.captures(raw.as_str());
+        if let None = capts {
+            return "".to_string();
+        }
+        let capts = capts.unwrap();
+        let res = capts.get(0).unwrap().as_str();
+        res.to_string()
     }
 
     // Get protocol from raw headers

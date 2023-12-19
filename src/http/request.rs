@@ -20,6 +20,7 @@ pub struct Request {
     pub ttl: u32,
     pub headers: Headers,
     pub body: String,
+    pub query: String,
     pub error: String,
 }
 
@@ -59,6 +60,7 @@ impl Request {
             content_length,
             ttl,
             body: "".to_string(),
+            query: Headers::get_query(&headers.raw),
             error,
             headers,
         }
