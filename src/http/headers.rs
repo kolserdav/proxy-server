@@ -224,8 +224,7 @@ impl Headers {
 
     /// Get query string from raw headers
     pub fn get_query(raw: &String) -> String {
-        println!("{raw}");
-        let reg = Regex::new(r"\?[a-zA-Z0-9_\-&=]*").unwrap();
+        let reg = Regex::new(r"\?[a-zA-Z0-9_\-&=\.]*").unwrap();
         let capts = reg.captures(raw.as_str());
         if let None = capts {
             return "".to_string();
