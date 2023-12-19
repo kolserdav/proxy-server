@@ -42,7 +42,7 @@ impl Http {
     /// Read request body
     pub fn read_body(&mut self, req: &Request) -> Result<Vec<u8>> {
         let mut buf: Vec<u8> = vec![];
-        if req.method.to_uppercase() == "GET" {
+        if req.content_length == 0 {
             return Ok(vec![]);
         }
         loop {

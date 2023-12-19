@@ -126,7 +126,7 @@ dependencies = [
 
 [[package]]
 name = "proxy-server"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "napi",
  "napi-derive",
