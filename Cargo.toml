@@ -1,6 +1,6 @@
 [package]
 name = "proxy-server"
-version = "0.6.4"
+version = "0.6.5"
 edition = "2021"
 description = "Low level proxy server"
 authors = ["Sergey Kolmiller <uyem.ru@gmail.com>"]
@@ -25,7 +25,7 @@ chunk_1MB = []
 napi = ["dep:napi", "dep:napi-derive"]
 
 [dependencies]
-napi = { version = "2.14.1", optional = true }
-napi-derive = { version = "2.14.2", optional = true }
+napi = { version = "2", optional = true }
+napi-derive = { version = "2", optional = true }
 regex = "1.7.1"
 serde = { version = "1.0.193", features = [ "derive" ] }
